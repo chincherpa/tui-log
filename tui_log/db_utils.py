@@ -222,7 +222,7 @@ def log_delete(db_path: Path, entry_id: int) -> bool:
 
 def log_get_open_blocks(db_path: Path, before_date: str | None = None) -> list[LogEntry]:
     """
-    [block]-Einträge die noch nicht durch [done]/[fix] aufgelöst wurden.
+    [block]-Einträge die noch nicht als aufgelöst markiert wurden.
     Carry-over-Quelle für den Tagesstart.
     """
     before_date = before_date or _today()
@@ -232,11 +232,21 @@ def log_get_open_blocks(db_path: Path, before_date: str | None = None) -> list[L
             SELECT * FROM log_entries
             WHERE tag_key = 'block'
               AND date < ?
+              AND resolved = 0
             ORDER BY date DESC, created_at DESC
             """,
             (before_date,),
         ).fetchall()
     return [_row_to_log(r) for r in rows]
+
+def log_resolve_block(db_path: Path, entry_id: int) -> bool:
+    """Markiert einen [block]-Eintrag als aufgelöst (verschwindet aus dem Carry-Over)."""
+    with get_connection(db_path) as conn:
+        cur = conn.execute(
+            "UPDATE log_entries SET resolved = 1 WHERE id = ? AND tag_key = 'block'",
+            (entry_id,),
+        )
+    return cur.rowcount > 0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DAY META
@@ -315,15 +325,15 @@ def day_get_week(db_path: Path, iso_week: str) -> list[DayMeta]:
     Alle DayMeta-Einträge einer ISO-Kalenderwoche.
     iso_week Format: "2026-W14"
     """
-    year, week = iso_week.split("-W")
+    date_from, date_to = _iso_week_to_date_range(iso_week)
     with get_connection(db_path, readonly=True) as conn:
         rows = conn.execute(
             """
             SELECT * FROM day_meta
-            WHERE strftime('%Y-W%W', date) = ?
+            WHERE date BETWEEN ? AND ?
             ORDER BY date
             """,
-            (f"{year}-{int(week):02d}",),
+            (date_from, date_to),
         ).fetchall()
     return [_row_to_day(r) for r in rows]
 
@@ -685,8 +695,8 @@ def project_upsert_from_config(db_path: Path, names: list[str]) -> None:
     Projekte aus config.toml in die DB synchronisieren.
     Neue werden angelegt, bestehende bleiben unverändert.
     """
-    for name in names:
-        with get_connection(db_path) as conn:
+    with get_connection(db_path) as conn:
+        for name in names:
             conn.execute(
                 "INSERT OR IGNORE INTO projects (name, phase) VALUES (?, 'active')",
                 (name,),

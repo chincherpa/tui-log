@@ -57,14 +57,27 @@ class MorningModal(ModalScreen[tuple[str, int] | None]):
     def _update_energy(self) -> None:
         self.query_one("#morning-energy-display", Label).update(self._energy_str())
 
+    def _update_hint(self) -> None:
+        text = (
+            "[←/→] oder [1-5] Energie  [Enter] Bestätigen  [Esc] Zurück"
+            if self._phase == "energy"
+            else "[Enter] Weiter  [Esc] Überspringen"
+        )
+        try:
+            self.query_one("#morning-hint", Label).update(text)
+        except Exception:
+            pass
+
     @on(Input.Submitted, "#morning-focus-input")
     def focus_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
         if text:
             self._focus_text = text
             self._phase = "energy"
-            # Fokus auf das "Fenster" selbst setzen damit Key-Events ankommen
-            self.query_one("#morning-dialog").focus()
+            # Input deaktivieren damit ←/→/Enter nicht mehr vom Input
+            # konsumiert werden und zum on_key des Screens aufsteigen können
+            event.input.disabled = True
+            self._update_hint()
 
     def on_key(self, event) -> None:
         if self._phase == "energy":
@@ -85,7 +98,10 @@ class MorningModal(ModalScreen[tuple[str, int] | None]):
                 event.stop()
             elif event.key == "escape":
                 self._phase = "focus"
-                self.query_one("#morning-focus-input", Input).focus()
+                inp = self.query_one("#morning-focus-input", Input)
+                inp.disabled = False
+                inp.focus()
+                self._update_hint()
                 event.stop()
 
     def action_skip(self) -> None:

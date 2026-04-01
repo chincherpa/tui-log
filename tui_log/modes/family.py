@@ -27,6 +27,8 @@ from textual.reactive import reactive
 from textual.widgets import Footer, Header, Input, Label, Static
 from textual import on, work
 
+from rich.markup import escape
+
 from ..config import AppConfig
 from .. import db_utils as db
 from ..widgets.log_input import LogInput
@@ -275,7 +277,7 @@ class FamilyApp(App):
             lines.append(
                 f"[dim]{_fmt_time(e.created_at)}[/]  "
                 f"[{col}]{sym} {e.tag_key:<7}[/]  "
-                f"[dim]{e.content[:50]}[/]"
+                f"[dim]{escape(e.content[:50])}[/]"
             )
         if not lines:
             lines = ["[dim]  (keine Arbeitseinträge heute)[/]"]
@@ -299,7 +301,7 @@ class FamilyApp(App):
                 lines.append(
                     f"[dim]{_fmt_time(e.created_at)}[/]  "
                     f"[bold {col}]{sym} {e.tag_key:<8}[/]  "
-                    f"{e.content}"
+                    f"{escape(e.content)}"
                 )
             content = "\n".join(lines)
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Generator
 
 # Aktuelle Schema-Version – erhöhen wenn neue Migration hinzukommt
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # ── SQL ──────────────────────────────────────────────────────────────────────
 
@@ -113,6 +113,15 @@ _MIGRATIONS: dict[int, str] = {
         done_at     TEXT
     );
     """,
+
+    2: """
+    -- Blockierungen können als aufgelöst markiert werden
+    ALTER TABLE log_entries ADD COLUMN resolved INTEGER NOT NULL DEFAULT 0;
+
+    -- Nur eine gleichzeitig laufende Focus-Session erlauben
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_session
+    ON focus_sessions((1)) WHERE ended_at IS NULL;
+    """,
 }
 
 # ── Verbindung ────────────────────────────────────────────────────────────────
@@ -125,7 +134,8 @@ def get_connection(db_path: Path, readonly: bool = False) -> Generator[sqlite3.C
     - Row-Factory für dict-ähnlichen Zugriff
     - Auto-Commit oder Rollback bei Exception
     """
-    uri = f"file:{db_path}{'?mode=ro' if readonly else ''}".replace("\\", "/")
+    base_uri = db_path.resolve().as_uri()
+    uri = f"{base_uri}?mode=ro" if readonly else base_uri
     conn = sqlite3.connect(uri, uri=True, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -143,6 +153,22 @@ def get_connection(db_path: Path, readonly: bool = False) -> Generator[sqlite3.C
         conn.close()
 
 # ── Migration ─────────────────────────────────────────────────────────────────
+
+def _exec_migration_sql(conn: sqlite3.Connection, sql: str) -> None:
+    """
+    Führt ein Multi-Statement-Migrations-SQL innerhalb der laufenden Transaktion aus.
+    Im Gegensatz zu executescript() wird kein implizites COMMIT vorher durchgeführt,
+    sodass DDL + schema_version INSERT atomar committ werden.
+    """
+    for stmt in (s.strip() for s in sql.split(";")):
+        # Leere Statements und reine Kommentar-Blöcke überspringen
+        code = "\n".join(
+            line for line in stmt.splitlines()
+            if line.strip() and not line.strip().startswith("--")
+        )
+        if code:
+            conn.execute(stmt)
+
 
 def _current_version(conn: sqlite3.Connection) -> int:
     """Aktuelle Schema-Version aus DB lesen (0 wenn frisch)."""
@@ -170,7 +196,7 @@ def migrate(db_path: Path) -> int:
         for version, sql in sorted(_MIGRATIONS.items()):
             if version <= current:
                 continue
-            conn.executescript(sql)
+            _exec_migration_sql(conn, sql)
             conn.execute(
                 "INSERT INTO schema_version (version) VALUES (?)", (version,)
             )

@@ -39,4 +39,4 @@ foto   = { symbol = "📷", name = "Foto",       color = "#B0BEC5", active = tru
 pause  = { symbol = "☕", name = "Pause",      color = "#A0A0A0", active = true }
 
 [tags.any]
-note   = { symbol = "·",  name = "Notiz",      color = "#D0D0D0", active = true }
+note   = { symbol = "🗒️",  name = "Notiz",      color = "#D0D0D0", active = true }

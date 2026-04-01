@@ -221,8 +221,9 @@ class WorkApp(App):
         self._log_entries: list[db.LogEntry] = []
         self._todos:       list[db.Todo]     = []
         self._carry_over:  list[db.LogEntry] = []
-        self._is_mounted:  bool = False
-        self._todo_idx:    int  = 0           # ausgewähltes Todo
+        self._is_mounted:       bool = False
+        self._todo_idx:         int  = 0      # ausgewähltes Todo
+        self._session_todo_title: str = ""    # Cache für Clock-Worker
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -458,12 +459,11 @@ class WorkApp(App):
             now = datetime.now()
             tick += 1
 
-            # Session-Bar sekündlich aktualisieren
+            # Session-Bar sekündlich aktualisieren – KEIN DB-Call hier!
             if self._active_session:
                 started = datetime.fromisoformat(self._active_session.started_at)
                 elapsed = int((now - started).total_seconds())
-                todo = db.todo_get(self.db_path, self._active_session.todo_id)
-                title = todo.title[:30] if todo else "?"
+                title = self._session_todo_title or "?"
                 h = elapsed // 3600
                 m = (elapsed % 3600) // 60
                 s = elapsed % 60
@@ -625,6 +625,7 @@ class WorkApp(App):
             if existing_sess:
                 todo = db.todo_get(self.db_path, existing_sess.todo_id)
                 if todo:
+                    self._session_todo_title = todo.title[:30]
                     ctx_entries: list = []
                     self._open_focus_modal(todo, existing_sess, ctx_entries)
                     return
@@ -662,6 +663,7 @@ class WorkApp(App):
         # Neue Session starten
         session = db.session_start(self.db_path, todo.id)
         self._active_session = session
+        self._session_todo_title = todo.title[:30]  # Cache für Clock-Worker
         self._check_active_session()
         self._open_focus_modal(todo, session, ctx_entries)
 
@@ -702,6 +704,7 @@ class WorkApp(App):
                         db.note_add(self.db_path, todo.id, note_text, session_id=session.id)
 
                 self._active_session = None
+                self._session_todo_title = ""
                 self._check_active_session()
                 self._load_all()
 

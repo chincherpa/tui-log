@@ -1,0 +1,42 @@
+# tui-log Konfiguration
+# Alle Farben als Hex-Werte (#RRGGBB)
+
+[schedule]
+work_start       = "06:00"
+work_end         = "15:00"
+handover_window  = 15        # Minuten nach work_end
+weekend_days     = [5, 6]    # 0=Mo, 5=Sa, 6=So
+
+[projects]
+active = ["Gartenhaus", "Hochbeet", "Foto-Archiv"]
+
+# ── TAGS ─────────────────────────────────────────────────────────────────────
+# Jeder Tag: symbol, name, color (hex), active (bool)
+
+[tags.work]
+done   = { symbol = "✓",  name = "Erledigt",   color = "#00C896", active = true }
+start  = { symbol = "▶",  name = "Gestartet",  color = "#5B8DEF", active = true }
+block  = { symbol = "✕",  name = "Blockiert",  color = "#FF6B6B", active = true }
+idea   = { symbol = "💡", name = "Idee",       color = "#C77DFF", active = true }
+fix    = { symbol = "⚡", name = "Fix",        color = "#FFD93D", active = true }
+deploy = { symbol = "⬆",  name = "Deployed",   color = "#4FC3F7", active = true }
+meet   = { symbol = "●",  name = "Meeting",    color = "#FF9A3C", active = true }
+
+[tags.family]
+hannah = { symbol = "♥",  name = "Hannah",    color = "#FF85A1", active = true }
+flora =  { symbol = "♥",  name = "Flora",     color = "#ff00ea", active = true }
+mathea = { symbol = "♥",  name = "Mathea",    color = "#FF85A1", active = true }
+jona =   { symbol = "♥",  name = "Jona",      color = "#0084ff", active = true }
+elliot = { symbol = "🐾", name = "Elliot",    color = "#4a6ba0", active = true }
+missy  = { symbol = "🐾", name = "Missy",     color = "#8db2ec", active = true }
+high   = { symbol = "★",  name = "Highlight", color = "#FFD93D", active = true }
+schwer = { symbol = "~",  name = "Schwierig", color = "#FF6B6B", active = true }
+
+[tags.weekend]
+bau    = { symbol = "🔨", name = "Bauen",      color = "#C8A165", active = true }
+gart   = { symbol = "🌱", name = "Garten",     color = "#7BC67E", active = true }
+foto   = { symbol = "📷", name = "Foto",       color = "#B0BEC5", active = true }
+pause  = { symbol = "☕", name = "Pause",      color = "#A0A0A0", active = true }
+
+[tags.any]
+note   = { symbol = "·",  name = "Notiz",      color = "#D0D0D0", active = true }

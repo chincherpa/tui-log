@@ -7,6 +7,7 @@ Focus-Session Modal – Timer, Live-Notizen, Kontext aus Voreinträgen.
 from __future__ import annotations
 
 from datetime import datetime
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
@@ -97,7 +98,7 @@ class FocusModal(ModalScreen[dict | None]):
                     for entry in self.ctx_entries[-4:]:
                         ts = entry.created_at[11:16]
                         yield Label(
-                            f"  {entry.date} {ts}  [{entry.tag_key}]  {entry.content[:45]}",
+                            f"  {entry.date} {ts}  [{entry.tag_key}]  {escape(entry.content[:45])}",
                             classes="focus-context-line",
                         )
 

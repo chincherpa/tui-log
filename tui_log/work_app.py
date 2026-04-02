@@ -38,6 +38,8 @@ from textual.widgets import (
 )
 from textual import on, work
 
+from rich.markup import escape
+
 from .config import AppConfig
 from .mode import detect_mode, Mode
 from . import db_utils as db
@@ -221,9 +223,9 @@ class WorkApp(App):
         self._log_entries: list[db.LogEntry] = []
         self._todos:       list[db.Todo]     = []
         self._carry_over:  list[db.LogEntry] = []
-        self._is_mounted:       bool = False
-        self._todo_idx:         int  = 0      # ausgewähltes Todo
-        self._session_todo_title: str = ""    # Cache für Clock-Worker
+        self._is_mounted:  bool = False
+        self._todo_idx:    int  = 0           # ausgewähltes Todo
+        self._active_session_title: str = ""  # gecachter Titel der laufenden Session
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -380,7 +382,7 @@ class WorkApp(App):
                 time_s = _fmt_time(e.created_at)
                 tag_s  = f"{symbol} {e.tag_key:<7}"
                 lines.append(
-                    f"[dim]{time_s}[/]  [bold {color}]{tag_s}[/]  {e.content}"
+                    f"[dim]{time_s}[/]  [bold {color}]{tag_s}[/]  {escape(e.content)}"
                 )
             content = "\n".join(lines)
 
@@ -407,8 +409,8 @@ class WorkApp(App):
             selected = (i == self._todo_idx)
             icon    = STATUS_ICONS.get(todo.status, "○")
             p_color = PRIORITY_COLORS.get(todo.priority, "#C8C8C8")
-            title_s = todo.title[:38]
-            ctx_s   = (todo.context or "")[:25]
+            title_s = escape(todo.title[:38])
+            ctx_s   = escape((todo.context or "")[:25])
             dur_s   = _fmt_duration(todo.total_duration_s) if todo.total_duration_s else ""
             sess_s  = f"{todo.total_sessions}×" if todo.total_sessions else ""
             stats   = f"{sess_s} {dur_s}".strip()
@@ -434,8 +436,12 @@ class WorkApp(App):
 
     def _check_morning_ritual(self) -> None:
         meta = db.day_get(self.db_path)
-        if meta and meta.morning_focus:
-            return   # Schon erledigt
+        if meta:
+            return   # Ritual heute schon angeboten oder erledigt
+
+        # DayMeta sofort anlegen: verhindert erneuten Dialog bei Modus-Wechseln
+        # (z.B. Ctrl+A → WorkApp neu gestartet, aber Ritual schon gesehen)
+        db.day_get_or_create(self.db_path)
 
         carry_texts = []
         today = date.today().isoformat()
@@ -446,7 +452,7 @@ class WorkApp(App):
             if result:
                 focus, energy = result
                 db.day_set_morning(self.db_path, focus=focus, energy=energy)
-                self._load_all()
+            self._load_all()
 
         self.push_screen(MorningModal(carry_texts), on_result)
 
@@ -463,14 +469,15 @@ class WorkApp(App):
             if self._active_session:
                 started = datetime.fromisoformat(self._active_session.started_at)
                 elapsed = int((now - started).total_seconds())
-                title = self._session_todo_title or "?"
+                todo = db.todo_get(self.db_path, self._active_session.todo_id)
+                title = todo.title[:30] if todo else "?"
                 h = elapsed // 3600
                 m = (elapsed % 3600) // 60
                 s = elapsed % 60
                 timer_str = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
                 self._update(
                     "#active-session-bar", Label,
-                    f"  ▶  {title}  ·  {timer_str}"
+                    f"  ▶  {self._active_session_title}  ·  {timer_str}"
                 )
                 self._add_class("#active-session-bar", "visible")
                 sess_label = f"  ▶ {timer_str}"
@@ -480,12 +487,9 @@ class WorkApp(App):
             # Titel + Modus nur jede Minute aktualisieren
             if tick % 60 == 1:
                 mode = detect_mode(self.cfg.schedule, now)
-                mode_label = {
-                    Mode.WORK:     "WORK",
-                    Mode.HANDOVER: "FEIERABEND",
-                    Mode.FAMILY:   "PRIVAT",
-                    Mode.WEEKEND:  "WOCHENENDE",
-                }.get(mode, "WORK")
+                # In WorkApp nur Arbeit-relevante Labels – PRIVAT/WOCHENENDE
+                # dürfen hier nicht erscheinen (Nutzer ist manuell in Work-Modus)
+                mode_label = "FEIERABEND" if mode == Mode.HANDOVER else "ARBEIT"
                 self.title = (
                     f"tui-log  ·  {mode_label}  ·  "
                     f"{now.strftime('%A, %d. %b')}  ·  "
@@ -500,7 +504,11 @@ class WorkApp(App):
     def _check_active_session(self) -> None:
         sess = db.session_get_active(self.db_path)
         self._active_session = sess
-        if not sess:
+        if sess:
+            todo = db.todo_get(self.db_path, sess.todo_id)
+            self._active_session_title = todo.title[:30] if todo else "?"
+        else:
+            self._active_session_title = ""
             self._remove_class("#active-session-bar", "visible")
         # Wenn Session aktiv: Bar wird vom Clock-Worker sekündlich befüllt
 
@@ -663,7 +671,6 @@ class WorkApp(App):
         # Neue Session starten
         session = db.session_start(self.db_path, todo.id)
         self._active_session = session
-        self._session_todo_title = todo.title[:30]  # Cache für Clock-Worker
         self._check_active_session()
         self._open_focus_modal(todo, session, ctx_entries)
 

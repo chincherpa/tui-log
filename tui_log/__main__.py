@@ -127,10 +127,6 @@ def main() -> None:
     _wal_cleanup(cfg.db_path)
 
 
-if __name__ == "__main__":
-    main()
-
-
 def _wal_cleanup(db_path: Path) -> None:
     """
     WAL-Checkpoint nach App-Exit.
@@ -144,3 +140,7 @@ def _wal_cleanup(db_path: Path) -> None:
         conn.close()
     except Exception:
         pass   # Nicht kritisch – beim nächsten Start wird es nachgeholt
+
+
+if __name__ == "__main__":
+    main()

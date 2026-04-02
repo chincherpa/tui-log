@@ -47,6 +47,7 @@ class LogEntry:
     mode: str
     content: str
     todo_id: int | None = None
+    resolved: int = 0
 
 @dataclass
 class DayMeta:

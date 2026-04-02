@@ -469,8 +469,6 @@ class WorkApp(App):
             if self._active_session:
                 started = datetime.fromisoformat(self._active_session.started_at)
                 elapsed = int((now - started).total_seconds())
-                todo = db.todo_get(self.db_path, self._active_session.todo_id)
-                title = todo.title[:30] if todo else "?"
                 h = elapsed // 3600
                 m = (elapsed % 3600) // 60
                 s = elapsed % 60
@@ -671,7 +669,7 @@ class WorkApp(App):
         # Neue Session starten
         session = db.session_start(self.db_path, todo.id)
         self._active_session = session
-        self._check_active_session()
+        self._active_session_title = todo.title[:30]
         self._open_focus_modal(todo, session, ctx_entries)
 
     def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:

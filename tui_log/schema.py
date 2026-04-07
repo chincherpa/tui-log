@@ -146,7 +146,7 @@ _MIGRATIONS: dict[int, str] = {
     ALTER TABLE todos_new RENAME TO todos;
     CREATE INDEX IF NOT EXISTS idx_todo_status ON todos(status);
     CREATE INDEX IF NOT EXISTS idx_todo_mode   ON todos(mode);
-    PRAGMA foreign_keys=ON
+    PRAGMA foreign_keys=ON;
     """,
 }
 

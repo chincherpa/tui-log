@@ -142,7 +142,7 @@ _MIGRATIONS: dict[int, str] = {
         done_at     TEXT
     );
     INSERT INTO todos_new SELECT * FROM todos;
-    DROP TABLE todos;
+    DROP TABLE IF EXISTS todos;
     ALTER TABLE todos_new RENAME TO todos;
     CREATE INDEX IF NOT EXISTS idx_todo_status ON todos(status);
     CREATE INDEX IF NOT EXISTS idx_todo_mode   ON todos(mode);

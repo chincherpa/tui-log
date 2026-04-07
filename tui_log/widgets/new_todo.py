@@ -7,7 +7,7 @@ Felder:
   - Titel        (Pflicht)
   - Kontext      (optional, z.B. "dashboard-local")
   - Priorität    (← → : high / normal / low)
-  - Modus        (← → : work / weekend / any)
+  - Modus        (← → : work / family / weekend / any)
 
 Enter im letzten Feld → speichern.
 Esc → abbrechen.

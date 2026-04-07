@@ -22,7 +22,6 @@ from datetime import date, datetime
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, ScrollableContainer
-from textual.reactive import reactive
 from textual.widgets import Footer, Header, Input, Label, Static
 from textual import on, work
 
@@ -272,7 +271,6 @@ class FamilyApp(App):
         self._load_family_log()
         self._load_todos()
         self._update_panel_title()
-        self._update_todo_panel_title()
 
     def _load_family_log(self) -> None:
         self._entries = db.log_get_day(self.db_path, mode="family")
@@ -322,6 +320,7 @@ class FamilyApp(App):
             ids = [t.id for t in self._todos]
             self._todo_idx = ids.index(current_id) if current_id in ids else 0
         self._render_todos()
+        self._update_todo_panel_title()
 
     def _render_todos(self) -> None:
         if not self._todos:
@@ -389,12 +388,11 @@ class FamilyApp(App):
         if not self._todos:
             return
         todo = self._todos[self._todo_idx]
-        if todo.status == "done":
-            self.notify(f"Bereits erledigt: {todo.title[:40]}", timeout=2)
+        if todo.status in ("done", "dropped"):
+            self.notify(f"Bereits abgeschlossen: {todo.title[:40]}", timeout=2)
             return
         db.todo_set_status(self.db_path, todo.id, "done")
         self._load_todos()
-        self._update_todo_panel_title()
         self.notify(f"✓  {todo.title[:40]}", timeout=2)
 
     def action_todo_delete(self) -> None:
@@ -404,7 +402,6 @@ class FamilyApp(App):
         db.todo_delete(self.db_path, todo.id)
         self._todo_idx = max(0, self._todo_idx - 1)
         self._load_todos()
-        self._update_todo_panel_title()
         self.notify(f"✗  '{todo.title[:40]}' gelöscht", timeout=2)
 
     def action_add_todo(self) -> None:
@@ -421,7 +418,6 @@ class FamilyApp(App):
                 mode=result["mode"],
             )
             self._load_todos()
-            self._update_todo_panel_title()
             self.notify(f"Todo angelegt: {result['title'][:40]}", timeout=2)
 
         self.push_screen(NewTodoModal(default_mode="family"), on_result)

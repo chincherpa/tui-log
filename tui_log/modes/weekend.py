@@ -5,10 +5,9 @@ Wochenend-Modus – Sa/So.
 
 Layout:
   ┌─ Header: WOCHENENDE · Datum ────────────────────────────────┐
-  │  PROJEKT-PANEL (links 1/3) │  LOG-PANEL (rechts 2/3)       │
-  │  Aktive Projekte           │  Log des Tages                 │
-  │  [Phase-Badges]            │  [Tag] Eingabe                 │
-  │  [+] Neues Projekt         │                                │
+  │  PROJEKT-PANEL (1fr) │  LOG-PANEL (2fr)  │  TODO-PANEL (1fr) │
+  │  Aktive Projekte     │  Log des Tages    │  Wochenend-Todos  │
+  │  [Phase-Badges]      │  [Tag] Eingabe    │                   │
   ├─ Footer: Keybindings ──────────────────────────────────────┤
 
 Tags: bau, gart, foto, pause, note
@@ -46,6 +45,14 @@ PHASE_BADGES = {
     "active":   ("▶",  "#00C896"),
     "paused":   ("‖",  "#FFD93D"),
     "done":     ("✓",  "#444466"),
+}
+
+_STATUS_ICONS = {
+    "open":    "[dim]○[/]",
+    "active":  "[bold green]▶[/]",
+    "paused":  "[dim]‖[/]",
+    "done":    "[dim]✓[/]",
+    "dropped": "[dim]✗[/]",
 }
 
 # ── Neues Projekt Modal ───────────────────────────────────────────────────────
@@ -123,19 +130,24 @@ class NewProjectModal(ModalScreen[dict | None]):
 class WeekendApp(App):
 
     BINDINGS = [
-        Binding("space,n", "focus_input",   "Log",         show=True),
-        Binding("tab",     "next_tag",      "Tag",         show=False),
-        Binding("shift+tab","prev_tag",     "Tag",         show=False),
-        Binding("p",       "next_project",  "Projekt ▼",  show=True),
-        Binding("shift+p", "prev_project",  "Projekt ▲",  show=False),
-        Binding("a",       "new_project",   "Neu",         show=True),
-        Binding("d",       "done_project",  "✓ Fertig",   show=True),
-        Binding("w",       "show_week",     "Woche",       show=True),
-        Binding("r",       "refresh",       "Refresh",     show=False),
-        Binding("ctrl+a",     "goto_work",    "→ Arbeit",    show=True),
-        Binding("ctrl+f",     "goto_family",  "→ Familie",   show=True),
-        Binding("ctrl+w",     "goto_weekend", "→ Wochenende",show=True),
-        Binding("q",       "quit",          "Beenden",     show=True),
+        Binding("space,n",   "focus_input",    "Log",           show=True),
+        Binding("tab",       "next_tag",       "Tag",           show=False),
+        Binding("shift+tab", "prev_tag",       "Tag",           show=False),
+        Binding("p",         "new_project",    "Neu Projekt",   show=True),
+        Binding("shift+down","next_project",   "Projekt ▼",    show=False),
+        Binding("shift+up",  "prev_project",   "Projekt ▲",    show=False),
+        Binding("a",         "add_todo",       "Neu Todo",      show=True),
+        Binding("up,k",      "todo_up",        "Todo ↑",        show=False),
+        Binding("down,j",    "todo_down",      "Todo ↓",        show=False),
+        Binding("d",         "todo_done",      "✓ Todo",        show=False),
+        Binding("shift+d",   "done_project",   "✓ Projekt",     show=True),
+        Binding("x",         "todo_delete",    "✗ Löschen",     show=False),
+        Binding("w",         "show_week",      "Woche",         show=True),
+        Binding("r",         "refresh",        "Refresh",       show=False),
+        Binding("ctrl+a",    "goto_work",      "→ Arbeit",      show=True),
+        Binding("ctrl+f",    "goto_family",    "→ Familie",     show=True),
+        Binding("ctrl+w",    "goto_weekend",   "→ Wochenende",  show=True),
+        Binding("q",         "quit",           "Beenden",       show=True),
     ]
 
     DEFAULT_CSS = """
@@ -180,6 +192,22 @@ class WeekendApp(App):
     #tag-selector  { width: auto; min-width: 12; height: 1; background: #1A1A0A; color: #C8A165; text-style: bold; padding: 0 1; margin-right: 1; }
     #log-input     { width: 1fr; height: 1; background: #12100A; color: #E8E8E8; border: none; }
     #log-input:focus { border: none; background: #12100A; }
+
+    /* ── Todo-Panel ── */
+    #todo-panel {
+        width: 1fr;
+        border: solid #2A2A18;
+        padding: 0 1;
+    }
+    #todo-panel:focus-within { border: solid #C8A165; }
+    #todo-panel-title {
+        background: #12100A;
+        color: #C8A165;
+        height: 1;
+        padding: 0 1;
+        text-style: bold;
+    }
+    #todo-list { height: 1fr; overflow-y: auto; }
     """
 
     def __init__(self, config: AppConfig) -> None:
@@ -194,6 +222,8 @@ class WeekendApp(App):
         self._projects: list[db.Project] = []
         self._project_idx   = 0
         self._entries: list[db.LogEntry] = []
+        self._todos:   list[db.Todo]     = []
+        self._todo_idx: int              = 0
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -239,6 +269,10 @@ class WeekendApp(App):
                 with Horizontal(id="input-row"):
                     yield Label("", id="tag-selector")
                     yield LogInput(placeholder="Was hast du gemacht? (Tab = Tag)", id="log-input")
+            with Vertical(id="todo-panel"):
+                yield Label("", id="todo-panel-title")
+                with ScrollableContainer(id="todo-list"):
+                    yield Static("", id="todo-list-content")
         yield Footer()
 
     # ── Mount ─────────────────────────────────────────────────────────────────
@@ -253,6 +287,7 @@ class WeekendApp(App):
     def _load_all(self) -> None:
         self._load_projects()
         self._load_log()
+        self._load_todos()
 
     def _load_projects(self) -> None:
         self._projects = db.project_list(self.db_path, phase="active")
@@ -272,7 +307,7 @@ class WeekendApp(App):
 
     def _render_projects(self) -> None:
         if not self._projects:
-            content = "[dim]  Keine aktiven Projekte\n  [a] Neues Projekt anlegen[/]"
+            content = "[dim]  Keine aktiven Projekte\n  [p] Neues Projekt anlegen[/]"
             self._update("#project-list-content", Static, content)
             return
 
@@ -326,9 +361,56 @@ class WeekendApp(App):
         proj_name = ""
         if self._projects:
             proj_name = f"  ·  {self._projects[self._project_idx].name}"
-        self._update("#log-title-bar", Label, 
+        self._update("#log-title-bar", Label,
             f"  📋 LOG{proj_name}  ·  {date.today().strftime('%A, %d. %b')}  ·  {len(self._entries)} Einträge"
         )
+
+    # ── Todo-Methoden ─────────────────────────────────────────────────────────
+
+    def _load_todos(self) -> None:
+        current_id = self._todos[self._todo_idx].id if self._todos else None
+        self._todos = db.todo_list(self.db_path, mode="weekend")
+        self._todos.sort(key=lambda t: (
+            0 if t.status == "active"
+            else 1 if t.status in ("open", "paused")
+            else 2,
+            t.created_at,
+        ))
+        if current_id is not None:
+            ids = [t.id for t in self._todos]
+            self._todo_idx = ids.index(current_id) if current_id in ids else 0
+        self._render_todos()
+        self._update_todo_panel_title()
+
+    def _render_todos(self) -> None:
+        if not self._todos:
+            self._update("#todo-list-content", Static,
+                         "[dim]  (keine Todos – [a] anlegen)[/]")
+            return
+
+        self._todo_idx = max(0, min(self._todo_idx, len(self._todos) - 1))
+        lines = []
+        for i, todo in enumerate(self._todos):
+            selected = (i == self._todo_idx)
+            icon = _STATUS_ICONS.get(todo.status, "○")
+            dim  = todo.status in ("done", "dropped")
+            tc   = "#444466" if dim else "#C8C8C8"
+            title_s = escape(todo.title[:36])
+
+            if selected:
+                line1 = f"[bold #C8A165]▶[/] {icon}  [bold reverse {tc}] {title_s} [/]"
+                line2 = "     [dim][↑↓] Nav  [d] Done  [x] Löschen[/]"
+                lines += [line1, line2, ""]
+            else:
+                lines += [f"  {icon}  [bold {tc}]{title_s}[/]", ""]
+
+        self._update("#todo-list-content", Static, "\n".join(lines))
+
+    def _update_todo_panel_title(self) -> None:
+        active = sum(1 for t in self._todos if t.status in ("open", "active", "paused"))
+        done   = sum(1 for t in self._todos if t.status == "done")
+        self._update("#todo-panel-title", Label,
+                     f"  ✅ TODOS  ·  {active} offen  ·  {done} done")
 
     # ── Tag-Selector ──────────────────────────────────────────────────────────
 
@@ -347,7 +429,7 @@ class WeekendApp(App):
                         self._tag_idx = idx_for_proj
 
         tag = self._we_tags[self._tag_idx]
-        self._update("#tag-selector", Label, 
+        self._update("#tag-selector", Label,
             f"[bold {tag.color}] {tag.symbol} {tag.key} [/]"
         )
 
@@ -397,6 +479,56 @@ class WeekendApp(App):
         self._load_projects()
         self.notify(f"'{proj.name}' abgeschlossen! ✓", timeout=2)
 
+    # ── Todo-Actions ──────────────────────────────────────────────────────────
+
+    def action_todo_up(self) -> None:
+        if self._todos and self._todo_idx > 0:
+            self._todo_idx -= 1
+            self._render_todos()
+
+    def action_todo_down(self) -> None:
+        if self._todos and self._todo_idx < len(self._todos) - 1:
+            self._todo_idx += 1
+            self._render_todos()
+
+    def action_todo_done(self) -> None:
+        if not self._todos:
+            return
+        todo = self._todos[self._todo_idx]
+        if todo.status in ("done", "dropped"):
+            self.notify(f"Bereits abgeschlossen: {todo.title[:40]}", timeout=2)
+            return
+        db.todo_set_status(self.db_path, todo.id, "done")
+        self._load_todos()
+        self.notify(f"✓  {todo.title[:40]}", timeout=2)
+
+    def action_todo_delete(self) -> None:
+        if not self._todos:
+            return
+        todo = self._todos[self._todo_idx]
+        db.todo_delete(self.db_path, todo.id)
+        self._todo_idx = max(0, self._todo_idx - 1)
+        self._load_todos()
+        self.notify(f"✗  '{todo.title[:40]}' gelöscht", timeout=2)
+
+    def action_add_todo(self) -> None:
+        from ..widgets.new_todo import NewTodoModal
+
+        def on_result(result: dict | None) -> None:
+            if not result:
+                return
+            db.todo_add(
+                self.db_path,
+                title=result["title"],
+                context=result["context"],
+                priority=result["priority"],
+                mode=result["mode"],
+            )
+            self._load_todos()
+            self.notify(f"Todo angelegt: {result['title'][:40]}", timeout=2)
+
+        self.push_screen(NewTodoModal(default_mode="weekend"), on_result)
+
     # ── Log-Eingabe ───────────────────────────────────────────────────────────
 
     def action_focus_input(self) -> None:
@@ -438,6 +570,7 @@ class WeekendApp(App):
 
     def action_goto_weekend(self) -> None:
         self.exit("weekend")
+
     # ── Refresh + Uhr ─────────────────────────────────────────────────────────
 
     def action_refresh(self) -> None:

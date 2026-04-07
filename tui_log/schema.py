@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Generator
 
 # Aktuelle Schema-Version – erhöhen wenn neue Migration hinzukommt
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # ── SQL ──────────────────────────────────────────────────────────────────────
 
@@ -121,6 +121,32 @@ _MIGRATIONS: dict[int, str] = {
     -- Nur eine gleichzeitig laufende Focus-Session erlauben
     CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_session
     ON focus_sessions((1)) WHERE ended_at IS NULL;
+    """,
+
+    3: """
+    -- todos.mode CHECK-Constraint um 'family' erweitern.
+    -- SQLite kann Constraints nicht direkt ändern → Tabelle neu erstellen.
+    PRAGMA foreign_keys=OFF;
+    CREATE TABLE todos_new (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        title       TEXT    NOT NULL,
+        context     TEXT,
+        status      TEXT    NOT NULL DEFAULT 'open'
+                    CHECK(status IN ('open','active','paused','done','dropped')),
+        priority    TEXT    NOT NULL DEFAULT 'normal'
+                    CHECK(priority IN ('high','normal','low')),
+        mode        TEXT    NOT NULL DEFAULT 'work'
+                    CHECK(mode IN ('work','family','weekend','any')),
+        tags        TEXT,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+        done_at     TEXT
+    );
+    INSERT INTO todos_new SELECT * FROM todos;
+    DROP TABLE todos;
+    ALTER TABLE todos_new RENAME TO todos;
+    CREATE INDEX IF NOT EXISTS idx_todo_status ON todos(status);
+    CREATE INDEX IF NOT EXISTS idx_todo_mode   ON todos(mode);
+    PRAGMA foreign_keys=ON
     """,
 }
 

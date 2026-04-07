@@ -24,7 +24,7 @@ from .schema import get_connection
 
 Status   = Literal["open", "active", "paused", "done", "dropped"]
 Priority = Literal["high", "normal", "low"]
-TodoMode = Literal["work", "weekend", "any"]
+TodoMode = Literal["work", "family", "weekend", "any"]
 LogMode  = Literal["work", "family", "weekend"]
 Outcome  = Literal["solved", "open", "blocked"]
 Rating   = Literal["zaeh", "ok", "gut", "sehr_gut"]

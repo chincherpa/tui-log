@@ -370,6 +370,7 @@ class WeekendApp(App):
     def _load_todos(self) -> None:
         current_id = self._todos[self._todo_idx].id if self._todos else None
         self._todos = db.todo_list(self.db_path, mode="weekend")
+        # Status-Bucket: active zuerst, dann open/paused, dann done/dropped.
         self._todos.sort(key=lambda t: (
             0 if t.status == "active"
             else 1 if t.status in ("open", "paused")

@@ -5,10 +5,9 @@ Familien-Modus – nach 15 Uhr und am Abend.
 
 Layout:
   ┌─ Header: PRIVAT · Uhrzeit ─────────────────────────────────┐
-  │  Arbeits-Zusammenfassung (klappbar, gedimmt)               │
-  │  ─────────────────────────────────────────────             │
-  │  Familien-Log (scrollbar, freier Text)                     │
-  │  [Tag] Eingabe-Leiste                                      │
+  │  Log-Panel (links, 2fr)  │  Todo-Panel (rechts, 1fr)       │
+  │  Familien-Log (scrollbar)│  Todos mit Navigation           │
+  │  [Tag] Eingabe-Leiste    │                                  │
   ├─ Footer: Keybindings ──────────────────────────────────────┤
 
 Tags: hannah, elliot, high, schwer, note
@@ -48,6 +47,14 @@ def _evening_greeting() -> str:
     if h < 20:
         return "Schönen Abend"
     return "Gute Nacht"
+
+_STATUS_ICONS = {
+    "open":    "[dim]○[/]",
+    "active":  "[bold green]▶[/]",
+    "paused":  "[dim]‖[/]",
+    "done":    "[dim]✓[/]",
+    "dropped": "[dim]✗[/]",
+}
 
 # ── Feierabend-Modal (einfach) ────────────────────────────────────────────────
 
@@ -150,16 +157,21 @@ class EveningModal(ModalScreen[dict | None]):
 class FamilyApp(App):
 
     BINDINGS = [
-        Binding("space,n", "focus_input",    "Log",       show=True),
-        Binding("tab",     "next_tag",       "Tag",       show=False),
-        Binding("shift+tab","prev_tag",      "Tag",       show=False),
-        Binding("e",       "evening_ritual", "Abend",     show=True),
-        Binding("w",       "show_week",      "Woche",     show=True),
-        Binding("r",       "refresh",        "Refresh",   show=False),
-        Binding("ctrl+a",     "goto_work",    "→ Arbeit",    show=True),
-        Binding("ctrl+f",     "goto_family",  "→ Familie",   show=True),
-        Binding("ctrl+w",     "goto_weekend", "→ Wochenende",show=True),
-        Binding("q",       "quit",           "Beenden",   show=True),
+        Binding("space,n",   "focus_input",    "Log",       show=True),
+        Binding("tab",       "next_tag",       "Tag",       show=False),
+        Binding("shift+tab", "prev_tag",       "Tag",       show=False),
+        Binding("a",         "add_todo",       "Neu Todo",  show=True),
+        Binding("up,k",      "todo_up",        "Todo ↑",    show=False),
+        Binding("down,j",    "todo_down",      "Todo ↓",    show=False),
+        Binding("d",         "todo_done",      "✓ Done",    show=False),
+        Binding("x",         "todo_delete",    "✗ Löschen", show=False),
+        Binding("e",         "evening_ritual", "Abend",     show=True),
+        Binding("w",         "show_week",      "Woche",     show=True),
+        Binding("r",         "refresh",        "Refresh",   show=False),
+        Binding("ctrl+a",    "goto_work",      "→ Arbeit",    show=True),
+        Binding("ctrl+f",    "goto_family",    "→ Familie",   show=True),
+        Binding("ctrl+w",    "goto_weekend",   "→ Wochenende",show=True),
+        Binding("q",         "quit",           "Beenden",   show=True),
     ]
 
     DEFAULT_CSS = """
@@ -167,27 +179,22 @@ class FamilyApp(App):
     Header          { background: #1A0D1A; color: #C77DFF; height: 1; }
     Footer          { background: #1A0D1A; color: #555577; height: 1; }
 
-    #work-summary {
-        height: auto;
-        max-height: 6;
-        background: #0D0D0D;
-        border: solid #1A1A2E;
-        padding: 0 1;
-        margin-bottom: 0;
-        color: #444466;
-    }
-    #work-summary-title { color: #333355; text-style: bold; height: 1; }
+    #main-split     { layout: horizontal; height: 1fr; }
 
-    #family-panel   { height: 1fr; border: solid #2A1A2A; padding: 0 1; }
-    #family-panel:focus-within { border: solid #C77DFF; }
+    #log-panel      { width: 2fr; border: solid #2A1A2A; padding: 0 1; }
+    #log-panel:focus-within { border: solid #C77DFF; }
     #panel-title    { background: #1A0D1A; color: #C77DFF; height: 1; padding: 0 1; text-style: bold; }
-
     #log-list       { height: 1fr; overflow-y: auto; }
 
     #input-row      { height: 3; layout: horizontal; background: #1A0D1A; border-top: solid #2A1A2A; padding: 0 1; align: left middle; }
     #tag-selector   { width: auto; min-width: 12; height: 1; background: #2A1A2A; color: #C77DFF; text-style: bold; padding: 0 1; margin-right: 1; }
     #log-input      { width: 1fr; height: 1; background: #1A0D1A; color: #E8E8E8; border: none; }
     #log-input:focus{ border: none; background: #1A0D1A; }
+
+    #todo-panel     { width: 1fr; border: solid #2A1A2A; padding: 0 1; }
+    #todo-panel:focus-within { border: solid #C77DFF; }
+    #todo-panel-title { background: #1A0D1A; color: #C77DFF; height: 1; padding: 0 1; text-style: bold; }
+    #todo-list      { height: 1fr; overflow-y: auto; }
     """
 
     def __init__(self, config: AppConfig) -> None:
@@ -200,6 +207,8 @@ class FamilyApp(App):
         )
         self._tag_idx   = 0
         self._entries: list[db.LogEntry] = []
+        self._todos:   list[db.Todo]     = []
+        self._todo_idx: int              = 0
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -234,18 +243,19 @@ class FamilyApp(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=False)
 
-        # Arbeits-Zusammenfassung (gedimmt, oben)
-        with Vertical(id="work-summary"):
-            yield Label("── Heute bei der Arbeit ─────────────────────", id="work-summary-title")
-            yield Static("", id="work-summary-content")
+        with Horizontal(id="main-split"):
+            with Vertical(id="log-panel"):
+                yield Label("", id="panel-title")
+                with ScrollableContainer(id="log-list"):
+                    yield Static("", id="log-content")
+                with Horizontal(id="input-row"):
+                    yield Label("", id="tag-selector")
+                    yield LogInput(placeholder="Was passiert? (Tab = Tag)", id="log-input")
 
-        with Vertical(id="family-panel"):
-            yield Label("", id="panel-title")
-            with ScrollableContainer(id="log-list"):
-                yield Static("", id="log-content")
-            with Horizontal(id="input-row"):
-                yield Label("", id="tag-selector")
-                yield LogInput(placeholder="Was passiert? (Tab = Tag)", id="log-input")
+            with Vertical(id="todo-panel"):
+                yield Label("", id="todo-panel-title")
+                with ScrollableContainer(id="todo-list"):
+                    yield Static("", id="todo-list-content")
 
         yield Footer()
 
@@ -259,30 +269,10 @@ class FamilyApp(App):
     # ── Laden ─────────────────────────────────────────────────────────────────
 
     def _load_all(self) -> None:
-        self._load_work_summary()
         self._load_family_log()
+        self._load_todos()
         self._update_panel_title()
-
-    def _load_work_summary(self) -> None:
-        work_entries = db.log_get_day(self.db_path, mode="work")
-        meta         = db.day_get(self.db_path)
-
-        lines = []
-        if meta and meta.morning_focus:
-            lines.append(f"[dim]  Fokus war: {meta.morning_focus}[/]")
-        for e in work_entries[-6:]:
-            tag = self.tags.get(e.tag_key)
-            sym = tag.symbol if tag else "·"
-            col = tag.color  if tag else "#444466"
-            lines.append(
-                f"[dim]{_fmt_time(e.created_at)}[/]  "
-                f"[{col}]{sym} {e.tag_key:<7}[/]  "
-                f"[dim]{escape(e.content[:50])}[/]"
-            )
-        if not lines:
-            lines = ["[dim]  (keine Arbeitseinträge heute)[/]"]
-
-        self._update("#work-summary-content", Static, "\n".join(lines))
+        self._update_todo_panel_title()
 
     def _load_family_log(self) -> None:
         self._entries = db.log_get_day(self.db_path, mode="family")
@@ -313,9 +303,55 @@ class FamilyApp(App):
 
     def _update_panel_title(self) -> None:
         cnt = len(self._entries)
-        self._update("#panel-title", Label, 
+        self._update("#panel-title", Label,
             f"  🏠 PRIVAT  ·  {date.today().strftime('%A, %d. %b')}  ·  {cnt} Einträge"
         )
+
+    # ── Todo-Methoden ─────────────────────────────────────────────────────────
+
+    def _load_todos(self) -> None:
+        current_id = self._todos[self._todo_idx].id if self._todos else None
+        self._todos = db.todo_list(self.db_path, mode="family")
+        self._todos.sort(key=lambda t: (
+            0 if t.status == "active"
+            else 1 if t.status in ("open", "paused")
+            else 2,
+            t.created_at,
+        ))
+        if current_id is not None:
+            ids = [t.id for t in self._todos]
+            self._todo_idx = ids.index(current_id) if current_id in ids else 0
+        self._render_todos()
+
+    def _render_todos(self) -> None:
+        if not self._todos:
+            self._update("#todo-list-content", Static,
+                         "[dim]  (keine Todos – [a] anlegen)[/]")
+            return
+
+        self._todo_idx = max(0, min(self._todo_idx, len(self._todos) - 1))
+        lines = []
+        for i, todo in enumerate(self._todos):
+            selected = (i == self._todo_idx)
+            icon = _STATUS_ICONS.get(todo.status, "○")
+            dim  = todo.status in ("done", "dropped")
+            tc   = "#444466" if dim else "#C8C8C8"
+            title_s = escape(todo.title[:36])
+
+            if selected:
+                line1 = f"[bold #C77DFF]▶[/] {icon}  [bold reverse {tc}] {title_s} [/]"
+                line2 = "     [dim][↑↓] Nav  [d] Done  [x] Löschen[/]"
+                lines += [line1, line2, ""]
+            else:
+                lines += [f"  {icon}  [bold {tc}]{title_s}[/]", ""]
+
+        self._update("#todo-list-content", Static, "\n".join(lines))
+
+    def _update_todo_panel_title(self) -> None:
+        active = sum(1 for t in self._todos if t.status in ("open", "active", "paused"))
+        done   = sum(1 for t in self._todos if t.status == "done")
+        self._update("#todo-panel-title", Label,
+                     f"  ✅ TODOS  ·  {active} offen  ·  {done} done")
 
     # ── Tag-Selector ──────────────────────────────────────────────────────────
 
@@ -323,7 +359,7 @@ class FamilyApp(App):
         if not self._fam_tags:
             return
         tag = self._fam_tags[self._tag_idx]
-        self._update("#tag-selector", Label, 
+        self._update("#tag-selector", Label,
             f"[bold {tag.color}] {tag.symbol} {tag.key} [/]"
         )
 
@@ -336,6 +372,59 @@ class FamilyApp(App):
         if self._fam_tags:
             self._tag_idx = (self._tag_idx - 1) % len(self._fam_tags)
             self._update_tag_selector()
+
+    # ── Todo-Actions ──────────────────────────────────────────────────────────
+
+    def action_todo_up(self) -> None:
+        if self._todos and self._todo_idx > 0:
+            self._todo_idx -= 1
+            self._render_todos()
+
+    def action_todo_down(self) -> None:
+        if self._todos and self._todo_idx < len(self._todos) - 1:
+            self._todo_idx += 1
+            self._render_todos()
+
+    def action_todo_done(self) -> None:
+        if not self._todos:
+            return
+        todo = self._todos[self._todo_idx]
+        if todo.status == "done":
+            self.notify(f"Bereits erledigt: {todo.title[:40]}", timeout=2)
+            return
+        db.todo_set_status(self.db_path, todo.id, "done")
+        self._load_todos()
+        self._update_todo_panel_title()
+        self.notify(f"✓  {todo.title[:40]}", timeout=2)
+
+    def action_todo_delete(self) -> None:
+        if not self._todos:
+            return
+        todo = self._todos[self._todo_idx]
+        db.todo_delete(self.db_path, todo.id)
+        self._todo_idx = max(0, self._todo_idx - 1)
+        self._load_todos()
+        self._update_todo_panel_title()
+        self.notify(f"✗  '{todo.title[:40]}' gelöscht", timeout=2)
+
+    def action_add_todo(self) -> None:
+        from ..widgets.new_todo import NewTodoModal
+
+        def on_result(result: dict | None) -> None:
+            if not result:
+                return
+            db.todo_add(
+                self.db_path,
+                title=result["title"],
+                context=result["context"],
+                priority=result["priority"],
+                mode=result["mode"],
+            )
+            self._load_todos()
+            self._update_todo_panel_title()
+            self.notify(f"Todo angelegt: {result['title'][:40]}", timeout=2)
+
+        self.push_screen(NewTodoModal(default_mode="family"), on_result)
 
     # ── Eingabe ───────────────────────────────────────────────────────────────
 
@@ -408,6 +497,7 @@ class FamilyApp(App):
 
     def action_goto_weekend(self) -> None:
         self.exit("weekend")
+
     # ── Refresh + Uhr ─────────────────────────────────────────────────────────
 
     def action_refresh(self) -> None:

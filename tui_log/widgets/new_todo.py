@@ -29,9 +29,10 @@ PRIORITY_DISPLAY = {
     "low":    "[dim]▼ low[/]",
 }
 
-MODES = ["work", "weekend", "any"]
+MODES = ["work", "family", "weekend", "any"]
 MODE_DISPLAY = {
     "work":    "[#5B8DEF]work[/]",
+    "family":  "[#C77DFF]family[/]",
     "weekend": "[#C8A165]weekend[/]",
     "any":     "[dim]any[/]",
 }
@@ -88,11 +89,11 @@ class NewTodoModal(ModalScreen[dict | None]):
     }
     """
 
-    def __init__(self, prefill_title: str = "") -> None:
+    def __init__(self, prefill_title: str = "", default_mode: str = "work") -> None:
         super().__init__()
         self._prefill    = prefill_title
         self._prio_idx   = 1   # Default: normal
-        self._mode_idx   = 0   # Default: work
+        self._mode_idx   = MODES.index(default_mode) if default_mode in MODES else 0
 
     # ── Compose ──────────────────────────────────────────────────────────────
 

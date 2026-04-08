@@ -226,6 +226,7 @@ class WorkApp(App):
         self._is_mounted:  bool = False
         self._todo_idx:    int  = 0           # ausgewähltes Todo
         self._active_session_title: str = ""  # gecachter Titel der laufenden Session
+        self._active_session_base_s: int = 0  # kumulierte Dauer des Todo vor aktueller Session
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -458,7 +459,7 @@ class WorkApp(App):
 
     # ── Uhr ───────────────────────────────────────────────────────────────────
 
-    @work(exclusive=True)
+    @work(exclusive=True, exit_on_error=False)
     async def _start_clock(self) -> None:
         tick = 0
         while self._is_mounted:
@@ -468,7 +469,7 @@ class WorkApp(App):
             # Session-Bar sekündlich aktualisieren – KEIN DB-Call hier!
             if self._active_session:
                 started = datetime.fromisoformat(self._active_session.started_at)
-                elapsed = int((now - started).total_seconds())
+                elapsed = self._active_session_base_s + int((now - started).total_seconds())
                 h = elapsed // 3600
                 m = (elapsed % 3600) // 60
                 s = elapsed % 60
@@ -505,8 +506,10 @@ class WorkApp(App):
         if sess:
             todo = db.todo_get(self.db_path, sess.todo_id)
             self._active_session_title = todo.title[:30] if todo else "?"
+            self._active_session_base_s = int(todo.total_duration_s) if todo else 0
         else:
             self._active_session_title = ""
+            self._active_session_base_s = 0
             self._remove_class("#active-session-bar", "visible")
         # Wenn Session aktiv: Bar wird vom Clock-Worker sekündlich befüllt
 
@@ -625,20 +628,6 @@ class WorkApp(App):
             self.notify(f"Focus-Fehler: {e}", severity="error", timeout=4)
 
     def _do_start_focus(self) -> None:
-        # Läuft bereits eine Session? Dann Modal dafür wieder öffnen.
-        if self._active_session:
-            existing_sess = db.session_get_active(self.db_path)
-            if existing_sess:
-                todo = db.todo_get(self.db_path, existing_sess.todo_id)
-                if todo:
-                    self._session_todo_title = todo.title[:30]
-                    ctx_entries: list = []
-                    self._open_focus_modal(todo, existing_sess, ctx_entries)
-                    return
-            # Session war in DB nicht mehr aktiv → State bereinigen
-            self._active_session = None
-            self._check_active_session()
-
         # Selektiertes Todo verwenden; Fallback auf erstes offenes
         if self._todos:
             todo = self._todos[self._todo_idx]
@@ -652,25 +641,32 @@ class WorkApp(App):
             self.notify("Keine offenen Todos.", severity="warning")
             return
 
-        # Kontext-Einträge (letzte Einträge mit ähnlichem Text)
-        words = set(todo.title.lower().split())
-        try:
-            ctx_entries = [
-                e for e in db.log_get_range(
-                    self.db_path,
-                    date_from=(date.today().replace(day=1).isoformat()),
-                    date_to=date.today().isoformat(),
-                )
-                if any(w in e.content.lower() for w in words if len(w) > 3)
-            ][-5:]
-        except Exception:
-            ctx_entries = []
+        # Aktive Session ggf. auf anderes Todo umschalten
+        existing_sess = db.session_get_active(self.db_path)
+        if existing_sess:
+            if existing_sess.todo_id == todo.id:
+                # Toggle aus: gleiche Todo-Auswahl + [f] beendet aktive Session
+                # und persistiert die Laufzeit.
+                db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")
+                self._active_session = None
+                self._active_session_title = ""
+                self._active_session_base_s = 0
+                self._check_active_session()
+                self._load_todos()
+                self._update_headers()
+                self.notify(f"Focus beendet: {todo.title[:40]}", timeout=2)
+                return
+            # Bisherige Session sauber als "open" beenden und auf neues Todo wechseln.
+            db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")
 
         # Neue Session starten
         session = db.session_start(self.db_path, todo.id)
         self._active_session = session
         self._active_session_title = todo.title[:30]
-        self._open_focus_modal(todo, session, ctx_entries)
+        stats_todo = db.todo_get(self.db_path, todo.id)
+        self._active_session_base_s = int(stats_todo.total_duration_s) if stats_todo else 0
+        # Fallback: FocusModal temporär deaktiviert, um App-Crash zu vermeiden.
+        self.notify(f"Focus gestartet: {todo.title[:40]}", timeout=2)
 
     def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:
 
@@ -681,37 +677,46 @@ class WorkApp(App):
 
             # Debriefing zeigen
             def on_debrief(debrief: dict | None) -> None:
-                if debrief is None:
-                    # Ohne Log-Eintrag beenden
-                    db.session_end(
-                        self.db_path, session.id,
-                        outcome=result["outcome"],
-                        log_entry="",
-                    )
-                else:
-                    db.session_end(
-                        self.db_path, session.id,
-                        outcome=debrief["outcome"],
-                        log_entry=debrief["log_entry"],
-                    )
-                    if debrief["log_entry"]:
-                        tag_key = "done" if debrief["outcome"] == "solved" else "block"
-                        db.log_add(
-                            self.db_path,
-                            tag_key=tag_key,
-                            content=debrief["log_entry"],
-                            mode="work",
-                            todo_id=todo.id,
+                try:
+                    if debrief is None:
+                        # Ohne Log-Eintrag beenden
+                        db.session_end(
+                            self.db_path, session.id,
+                            outcome=result["outcome"],
+                            log_entry="",
                         )
+                    else:
+                        db.session_end(
+                            self.db_path, session.id,
+                            outcome=debrief["outcome"],
+                            log_entry=debrief["log_entry"],
+                        )
+                        if debrief["log_entry"]:
+                            tag_key = "done" if debrief["outcome"] == "solved" else "block"
+                            db.log_add(
+                                self.db_path,
+                                tag_key=tag_key,
+                                content=debrief["log_entry"],
+                                mode="work",
+                                todo_id=todo.id,
+                            )
 
-                    # Notizen aus der Session schreiben
-                    for note_text in result.get("notes", []):
-                        db.note_add(self.db_path, todo.id, note_text, session_id=session.id)
+                        # Notizen aus der Session schreiben
+                        for note_text in result.get("notes", []):
+                            db.note_add(self.db_path, todo.id, note_text, session_id=session.id)
 
-                self._active_session = None
-                self._session_todo_title = ""
-                self._check_active_session()
-                self._load_all()
+                    self._active_session = None
+                    self._active_session_title = ""
+                    self._check_active_session()
+                    self._load_all()
+                except Exception as e:
+                    import logging, traceback
+                    logging.error(f"on_debrief:\n{traceback.format_exc()}")
+                    self.notify(f"Fehler beim Speichern: {e}", severity="error", timeout=5)
+                    self._active_session = None
+                    self._active_session_title = ""
+                    self._check_active_session()
+                    self._load_all()
 
             self.push_screen(
                 DebriefingModal(

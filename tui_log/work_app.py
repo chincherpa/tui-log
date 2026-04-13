@@ -438,7 +438,7 @@ class WorkApp(App):
                 # Markierte Zeile: heller Hintergrund-Effekt via reverse
                 arrow = "[bold #5B8DEF]▶[/]"
                 line1 = f"{arrow} {icon}  [bold reverse {tc}] {title_s} [/]"
-                line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "") +                         "  [dim][↑↓] Nav  [f] Focus  [Enter] Aktiv  [d] Done  [x] Löschen[/]"
+                line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "") +                         "  [dim][f] Focus  [Enter] Aktiv  [d] Done  [x] Löschen[/]"
             else:
                 line1 = f"  {icon}  [bold {tc}]{title_s}[/]"
                 line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "")

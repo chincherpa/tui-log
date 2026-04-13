@@ -221,6 +221,21 @@ def log_delete(db_path: Path, entry_id: int) -> bool:
         cur = conn.execute("DELETE FROM log_entries WHERE id = ?", (entry_id,))
     return cur.rowcount > 0
 
+def log_get_all(
+    db_path: Path,
+    mode: LogMode | None = None,
+) -> list[LogEntry]:
+    """Alle Einträge, optional nach Mode gefiltert, neueste zuerst."""
+    sql = "SELECT * FROM log_entries"
+    params: list = []
+    if mode:
+        sql += " WHERE mode = ?"
+        params.append(mode)
+    sql += " ORDER BY date DESC, created_at DESC"
+    with get_connection(db_path, readonly=True) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [_row_to_log(r) for r in rows]
+
 def log_get_open_blocks(db_path: Path, before_date: str | None = None) -> list[LogEntry]:
     """
     [block]-Einträge die noch nicht als aufgelöst markiert wurden.

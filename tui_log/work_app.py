@@ -314,7 +314,7 @@ class WorkApp(App):
         self._update_headers()
 
     def _load_log(self) -> None:
-        self._log_entries = db.log_get_day(self.db_path, mode="work")
+        self._log_entries = db.log_get_all(self.db_path, mode="work")
         self._render_log()
 
     def _load_todos(self) -> None:
@@ -352,10 +352,12 @@ class WorkApp(App):
             e = day_meta.morning_energy
             energy_str = " · " + "●" * e + "○" * (5 - e)
 
+        today = date.today().isoformat()
+        today_count = sum(1 for e in self._log_entries if e.date == today)
         focus_str = f" · {focus[:32]}" if focus else ""
         title_str = (
             f"  📋 LOG  ·  {now.strftime('%a, %d. %b')}  ·  "
-            f"{len(self._log_entries)} Einträge{focus_str}{energy_str}"
+            f"{today_count} Einträge heute{focus_str}{energy_str}"
         )
         self._update("#log-panel-title", Label, title_str)
 
@@ -373,10 +375,23 @@ class WorkApp(App):
 
     def _render_log(self) -> None:
         if not self._log_entries:
-            content = "[dim]  (noch keine Einträge heute)[/]"
+            content = "[dim]  (noch keine Einträge)[/]"
         else:
+            today = date.today().isoformat()
             lines = []
+            current_date = None
             for e in self._log_entries:
+                if e.date != current_date:
+                    current_date = e.date
+                    if e.date == today:
+                        date_label = "Heute"
+                    else:
+                        try:
+                            d = date.fromisoformat(e.date)
+                            date_label = d.strftime("%a, %d. %b %Y")
+                        except Exception:
+                            date_label = e.date
+                    lines.append(f"\n[dim]── {date_label} ──────────────────────[/]")
                 tag = self.tags.get(e.tag_key)
                 symbol = tag.symbol if tag else "·"
                 color  = tag.color  if tag else "#888888"
@@ -385,14 +400,14 @@ class WorkApp(App):
                 lines.append(
                     f"[dim]{time_s}[/]  [bold {color}]{tag_s}[/]  {escape(e.content)}"
                 )
-            content = "\n".join(lines)
+            content = "\n".join(lines).lstrip("\n")
 
         self._update("#log-list-content", Static, content)
-        # Ans Ende scrollen
+        # Nach oben scrollen – neueste Einträge zuerst
         w = self._q("#log-list", ScrollableContainer)
         if w is not None:
             try:
-                w.scroll_end(animate=False)
+                w.scroll_home(animate=False)
             except Exception:
                 pass
 

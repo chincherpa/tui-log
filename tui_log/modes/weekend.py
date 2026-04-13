@@ -148,7 +148,7 @@ class WeekendApp(App):
         Binding("ctrl+f",    "goto_family",    "→ Familie",     show=True),
         Binding("ctrl+w",    "goto_weekend",   "→ Wochenende",  show=True),
         Binding("q",         "quit",           "Beenden",       show=True),
-        Binding("shift+p",   "git_push_db",    "Push DB",       show=False),
+        Binding("shift+p",   "git_push_db",    "Push DB",       show=True),
     ]
 
     DEFAULT_CSS = """

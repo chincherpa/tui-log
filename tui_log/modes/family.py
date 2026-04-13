@@ -341,7 +341,7 @@ class FamilyApp(App):
 
             if selected:
                 line1 = f"[bold #C77DFF]▶[/] {icon}  [bold reverse {tc}] {title_s} [/]"
-                line2 = "     [dim][↑↓] Nav  [d] Done  [x] Löschen[/]"
+                line2 = "     [dim][d] Done  [x] Löschen[/]"
                 lines += [line1, line2, ""]
             else:
                 lines += [f"  {icon}  [bold {tc}]{title_s}[/]", ""]

@@ -148,6 +148,7 @@ class WeekendApp(App):
         Binding("ctrl+f",    "goto_family",    "→ Familie",     show=True),
         Binding("ctrl+w",    "goto_weekend",   "→ Wochenende",  show=True),
         Binding("q",         "quit",           "Beenden",       show=True),
+        Binding("shift+p",   "git_push_db",    "Push DB",       show=False),
     ]
 
     DEFAULT_CSS = """
@@ -576,6 +577,43 @@ class WeekendApp(App):
 
     def action_refresh(self) -> None:
         self._load_all()
+
+    def action_git_push_db(self) -> None:
+        self._run_git_push()
+
+    @work
+    async def _run_git_push(self) -> None:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        cwd = str(self.db_path.parent)
+        db_name = self.db_path.name
+
+        async def run(*args: str) -> tuple[int, str]:
+            proc = await asyncio.create_subprocess_exec(
+                *args, cwd=cwd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            out, err = await proc.communicate()
+            return proc.returncode, (out + err).decode(errors="replace")
+
+        rc, _ = await run("git", "add", db_name)
+        if rc != 0:
+            self.notify("git add fehlgeschlagen", severity="error", timeout=4)
+            return
+
+        rc, out = await run("git", "commit", "-m", f"update {timestamp}")
+        if rc != 0:
+            if "nothing to commit" in out:
+                self.notify("Keine Änderungen – nichts zu pushen", timeout=3)
+            else:
+                self.notify("git commit fehlgeschlagen", severity="error", timeout=4)
+            return
+
+        rc, _ = await run("git", "push")
+        if rc == 0:
+            self.notify(f"journal.db gepushed  [{timestamp}]", timeout=3)
+        else:
+            self.notify("git push fehlgeschlagen", severity="error", timeout=4)
 
     @work(exclusive=True)
     async def _tick_title(self) -> None:

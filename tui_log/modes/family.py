@@ -17,6 +17,7 @@ Kein Stress, keine Struktur-Zwänge.
 from __future__ import annotations
 
 import asyncio
+import unicodedata
 from datetime import date, datetime
 
 from textual.app import App, ComposeResult
@@ -32,6 +33,18 @@ from .. import db_utils as db
 from ..widgets.log_input import LogInput
 
 # ── Helfer ────────────────────────────────────────────────────────────────────
+
+def _sym_w(s: str) -> int:
+    """Visual terminal column width of a symbol (accounts for wide/emoji chars)."""
+    w = 0
+    for c in s:
+        ew = unicodedata.east_asian_width(c)
+        if ew in ('W', 'F'):
+            w += 2
+        elif unicodedata.category(c) not in ('Mn', 'Me', 'Cf'):
+            w += 1
+    return w
+
 
 def _fmt_time(iso_dt: str) -> str:
     try:
@@ -287,9 +300,10 @@ class FamilyApp(App):
                 tag = self.tags.get(e.tag_key)
                 sym = tag.symbol if tag else "·"
                 col = tag.color  if tag else "#888888"
+                pad = 8 - (_sym_w(sym) - 1)
                 lines.append(
                     f"[dim]{_fmt_time(e.created_at)}[/]  "
-                    f"[bold {col}]{sym} {e.tag_key:<8}[/]  "
+                    f"[bold {col}]{sym} {e.tag_key:<{pad}}[/]  "
                     f"{escape(e.content)}"
                 )
             content = "\n".join(lines)

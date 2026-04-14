@@ -25,6 +25,7 @@ Keybindings:
 from __future__ import annotations
 
 import asyncio
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -51,6 +52,18 @@ from .widgets.new_todo import NewTodoModal
 
 
 # ── Tag-Hilfsfunktionen ───────────────────────────────────────────────────────
+
+def _sym_w(s: str) -> int:
+    """Visual terminal column width of a symbol (accounts for wide/emoji chars)."""
+    w = 0
+    for c in s:
+        ew = unicodedata.east_asian_width(c)
+        if ew in ('W', 'F'):
+            w += 2
+        elif unicodedata.category(c) not in ('Mn', 'Me', 'Cf'):
+            w += 1
+    return w
+
 
 def _tag_markup(tag_key: str, tags) -> str:
     """Gibt Rich-Markup für ein Tag zurück."""
@@ -397,7 +410,7 @@ class WorkApp(App):
                 symbol = tag.symbol if tag else "·"
                 color  = tag.color  if tag else "#888888"
                 time_s = _fmt_time(e.created_at)
-                tag_s  = f"{symbol} {e.tag_key:<7}"
+                tag_s  = f"{symbol} {e.tag_key:<{7 - (_sym_w(symbol) - 1)}}"
                 lines.append(
                     f"[dim]{time_s}[/]  [bold {color}]{tag_s}[/]  {escape(e.content)}"
                 )

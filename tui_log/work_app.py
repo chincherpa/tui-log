@@ -656,6 +656,13 @@ class WorkApp(App):
         if todo.status == "done":
             self.notify(f"Bereits erledigt: {todo.title[:40]}", timeout=2)
             return
+        # Aktive Focus-Session für dieses Todo beenden
+        if self._active_session and self._active_session.todo_id == todo.id:
+            db.session_end(self.db_path, self._active_session.id, outcome="solved", log_entry="")
+            self._active_session = None
+            self._active_session_title = ""
+            self._active_session_base_s = 0
+            self._check_active_session()
         db.todo_set_status(self.db_path, todo.id, "done")
         # Optional: [done]-Eintrag ins Tages-Log
         db.log_add(self.db_path, tag_key="done", content=todo.title, mode="work")
@@ -675,6 +682,13 @@ class WorkApp(App):
         def on_confirm(confirmed: bool) -> None:
             if not confirmed:
                 return
+            # Aktive Focus-Session für dieses Todo beenden
+            if self._active_session and self._active_session.todo_id == todo.id:
+                db.session_end(self.db_path, self._active_session.id, outcome="open", log_entry="")
+                self._active_session = None
+                self._active_session_title = ""
+                self._active_session_base_s = 0
+                self._check_active_session()
             db.todo_set_status(self.db_path, todo.id, "cancelled")
             self._load_todos()
             self.notify(f"✗  '{todo.title[:40]}' cancelled", timeout=2)

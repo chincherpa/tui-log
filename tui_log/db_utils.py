@@ -24,8 +24,8 @@ from .schema import get_connection
 
 Status   = Literal["open", "active", "paused", "done", "dropped"]
 Priority = Literal["high", "normal", "low"]
-TodoMode = Literal["work", "family", "weekend", "any"]
-LogMode  = Literal["work", "family", "weekend"]
+TodoMode = Literal["work"]
+LogMode  = Literal["work"]
 Outcome  = Literal["solved", "open", "blocked"]
 Rating   = Literal["zaeh", "ok", "gut", "sehr_gut"]
 Phase    = Literal["planning", "active", "paused", "done"]
@@ -235,6 +235,17 @@ def log_get_all(
     with get_connection(db_path, readonly=True) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_row_to_log(r) for r in rows]
+
+def log_used_tags(db_path: Path, mode: LogMode | None = None) -> set[str]:
+    """Distinct tag_keys die mindestens einen Log-Eintrag haben."""
+    sql = "SELECT DISTINCT tag_key FROM log_entries"
+    params: list = []
+    if mode:
+        sql += " WHERE mode = ?"
+        params.append(mode)
+    with get_connection(db_path, readonly=True) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return {r["tag_key"] for r in rows}
 
 def log_get_open_blocks(db_path: Path, before_date: str | None = None) -> list[LogEntry]:
     """
@@ -732,7 +743,6 @@ class WeekSummary:
     open_blocks: int
     focus_total_s: int              # Gesamte Focus-Zeit der Woche
     day_ratings: list[str]
-    weekend_projects: list[str]
 
 def _iso_week_to_date_range(iso_week: str) -> tuple[str, str]:
     """
@@ -795,17 +805,6 @@ def week_summary(db_path: Path, iso_week: str) -> WeekSummary:
             (date_from, date_to),
         ).fetchone()
 
-        project_rows = conn.execute(
-            """
-            SELECT DISTINCT p.name
-            FROM log_entries l
-            JOIN projects p ON l.tag_key = p.tag_key
-            WHERE l.date BETWEEN ? AND ?
-              AND l.mode = 'weekend'
-            """,
-            (date_from, date_to),
-        ).fetchall()
-
     log_counts  = {r["tag_key"]: r["cnt"] for r in log_rows}
     top_tags    = [(r["tag_key"], r["cnt"]) for r in log_rows[:5]]
     energies    = [r["morning_energy"] for r in day_rows if r["morning_energy"]]
@@ -822,5 +821,4 @@ def week_summary(db_path: Path, iso_week: str) -> WeekSummary:
         open_blocks=open_blocks_row[0] if open_blocks_row else 0,
         focus_total_s=focus_row[0] if focus_row else 0,
         day_ratings=ratings,
-        weekend_projects=[r["name"] for r in project_rows],
     )

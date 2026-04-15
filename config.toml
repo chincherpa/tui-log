@@ -5,7 +5,6 @@
 work_start       = "06:00"
 work_end         = "15:00"
 handover_window  = 15        # Minuten nach work_end
-weekend_days     = [5, 6]    # 0=Mo, 5=Sa, 6=So
 
 [projects]
 active = ["Gartenhaus", "Hochbeet", "Foto-Archiv"]
@@ -23,24 +22,6 @@ urgent = { symbol = "🔥", name = "Wichtig",    color = "#F03E3E", active = tru
 wait   = { symbol = "⏳", name = "Warten",     color = "#CED4DA", active = true }
 review = { symbol = "👁",  name = "Review",     color = "#339AF0", active = true }
 plan   = { symbol = "📅", name = "Geplant",    color = "#94D82D", active = true }
-
-[tags.family]
-hannah = { symbol = "♥",  name = "Hannah",    color = "#FF85A1", active = true }
-flora =  { symbol = "♥",  name = "Flora",     color = "#ff00ea", active = true }
-mathea = { symbol = "♥",  name = "Mathea",    color = "#FF85A1", active = true }
-jona =   { symbol = "♥",  name = "Jona",      color = "#0084ff", active = true }
-elliot = { symbol = "🐾", name = "Elliot",    color = "#4a6ba0", active = true }
-missy  = { symbol = "🐾", name = "Missy",     color = "#8db2ec", active = true }
-high   = { symbol = "★",  name = "Highlight", color = "#FFD93D", active = true }
-schwer = { symbol = "~",  name = "Schwierig", color = "#FF6B6B", active = true }
-mittel = { symbol = "–",  name = "Mittel",    color = "#FFB347", active = true }
-leicht = { symbol = "•",  name = "Leicht",    color = "#51CF66", active = true }
-
-[tags.weekend]
-bau    = { symbol = "🔨", name = "Bauen",      color = "#C8A165", active = true }
-gart   = { symbol = "🌱", name = "Garten",     color = "#7BC67E", active = true }
-foto   = { symbol = "📷", name = "Foto",       color = "#B0BEC5", active = true }
-pause  = { symbol = "☕", name = "Pause",      color = "#A0A0A0", active = true }
 
 [tags.any]
 note   = { symbol = "🗒️",  name = "Notiz",      color = "#D0D0D0", active = true }

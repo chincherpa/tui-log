@@ -1,21 +1,20 @@
 """
 tui_log/views/weekly.py
 ~~~~~~~~~~~~~~~~~~~~~~~
-Wochenrückblick – als Screen der aus jedem Modus pushbar ist.
+Wochenrückblick – als Screen aus der Work-App pushbar.
 
 Layout:
   ┌─ Header: KW 14 · 28. Mär – 03. Apr ─────────────────────── ┐
   │                                                              │
-  │  ARBEIT                    WOCHENENDE                       │
-  │  5 Arbeitstage             Projekte: Gartenhaus, Hochbeet   │
-  │  Ø Energie ●●●○○           3 Log-Einträge                   │
-  │  12 done · 2 offen         ...                              │
-  │  Top-Tags: ...                                              │
+  │  ARBEIT                                                      │
+  │  5 Arbeitstage                                               │
+  │  Ø Energie ●●●○○                                             │
+  │  12 done · 2 offen                                           │
+  │  Top-Tags: ...                                               │
   │                                                              │
   │  HIGHLIGHTS                                                  │
-  │  (family [high]-Einträge der Woche)                         │
   │                                                              │
-  │  WOCHENBEWERTUNG           FOKUS-ZEIT                       │
+  │  TAGESBEWERTUNGEN          FOKUS-ZEIT                       │
   │  Mo ● Di ● Mi ~ Do ● Fr ●  4h 23m                          │
   │                                                              │
   ├─ [←] Vorwoche  [→] Nächste  [Enter/q] Zurück ──────────────┤
@@ -103,7 +102,6 @@ class WeeklyScreen(Screen):
 
     #top-split      { layout: horizontal; height: auto; margin-bottom: 1; }
     #work-col       { width: 1fr; padding-right: 2; }
-    #weekend-col    { width: 1fr; }
 
     .stat-label     { color: #888899; height: 1; }
     .stat-value     { color: #C8C8C8; height: 1; }
@@ -197,15 +195,6 @@ class WeeklyScreen(Screen):
         )
         lines.append("")
 
-        # ── Wochenend-Projekte ────────────────────────────────────────────────
-        lines.append("[bold #C8A165]WOCHENENDE[/]")
-        if s.weekend_projects:
-            proj_str = "  ·  ".join(f"[#C8A165]{p}[/]" for p in s.weekend_projects)
-            lines.append(f"  [dim]Projekte:[/]  {proj_str}")
-        else:
-            lines.append("  [dim](keine Wochenend-Einträge)[/]")
-        lines.append("")
-
         # ── Tagesbewertungen ─────────────────────────────────────────────────
         lines.append("[bold #C8C8C8]TAGESBEWERTUNGEN[/]")
         day_metas = db.day_get_week(self.db_path, self._week)
@@ -233,7 +222,7 @@ class WeeklyScreen(Screen):
             )
         lines.append("")
 
-        # ── Highlights (family [high]-Einträge) ───────────────────────────────
+        # ── Highlights ([high]-Einträge) ─────────────────────────────────────
         highlights = db.log_get_range(
             self.db_path,
             date_from=monday.isoformat(),

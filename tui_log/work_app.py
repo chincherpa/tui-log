@@ -120,6 +120,16 @@ STATUS_ICONS = {
     "paused":  "[dim]‖[/]",
     "done":    "[dim]✓[/]",
     "dropped": "[dim]✗[/]",
+    "focus":   "[bold #55CCFF]◉[/]",
+}
+
+STATUS_COLORS = {
+    "done":    "#2E7D32",   # dunkelgrün
+    "active":  "#66FF66",   # hellgrün
+    "paused":  "#FFD700",   # gelb
+    "dropped": "#8B0000",   # dunkelrot
+    "focus":   "#55CCFF",   # hellblau
+    "open":    "#C8C8C8",   # neutral grau
 }
 
 PRIORITY_COLORS = {
@@ -141,8 +151,7 @@ class TodoItemWidget(Static):
         sess_s   = f"{todo.total_sessions}×" if todo.total_sessions else ""
         stats_s  = f"{sess_s} {dur_s}".strip()
 
-        dim_title = todo.status in ("done", "dropped")
-        title_color = "#444466" if dim_title else p_color
+        title_color = STATUS_COLORS.get(todo.status, "#C8C8C8")
 
         line1 = f"{icon} [bold {title_color}]{title_s}[/]"
         line2 = f"   [dim]{ctx_s}[/dim]" + (f"  [dim]{stats_s}[/]" if stats_s else "")
@@ -203,9 +212,6 @@ class WorkApp(App):
         Binding("a",         "add_todo",        "Neu Todo",     show=True),
         Binding("b",         "prev_filter",     "Filter ←",     show=False),
         Binding("n",         "next_filter",     "Filter →",     show=False),
-        Binding("ctrl+a",    "goto_work",       "→ Arbeit",     show=True),
-        Binding("ctrl+f",    "goto_family",     "→ Familie",    show=True),
-        Binding("ctrl+w",    "goto_weekend",    "→ Wochenende", show=True),
         Binding("d",         "todo_done",       "✓ Done",       show=False),
         Binding("down,j",    "todo_down",       "Todo ↓",       show=False),
         Binding("enter",     "todo_activate",   "Aktivieren",   show=False),
@@ -316,11 +322,8 @@ class WorkApp(App):
 
     def on_mount(self) -> None:
         self._is_mounted = True
-        # Filter-Liste aufbauen: [None, tag1, tag2, ...]
-        self._filter_keys = [None] + [t.key for t in self._work_tags]
         self._load_all()
         self._update_tag_selector()
-        self._render_filter_bar()
         self._start_clock()
         self._check_active_session()
 
@@ -334,6 +337,12 @@ class WorkApp(App):
 
     def _load_log(self) -> None:
         self._log_entries = db.log_get_all(self.db_path, mode="work")
+        # Filter-Leiste: nur Tags mit Einträgen anzeigen
+        used = db.log_used_tags(self.db_path, mode="work")
+        self._filter_keys = [None] + [t.key for t in self._work_tags if t.key in used]
+        if self._log_filter not in self._filter_keys:
+            self._log_filter = None
+        self._render_filter_bar()
         self._render_log()
 
     def _load_todos(self) -> None:
@@ -443,19 +452,21 @@ class WorkApp(App):
         # Index in gültigem Bereich halten
         self._todo_idx = max(0, min(self._todo_idx, len(self._todos) - 1))
 
+        # Todo mit aktiver Focus-Session ermitteln
+        focus_todo_id = self._active_session.todo_id if self._active_session else None
+
         lines = []
         for i, todo in enumerate(self._todos):
             selected = (i == self._todo_idx)
-            icon    = STATUS_ICONS.get(todo.status, "○")
-            p_color = PRIORITY_COLORS.get(todo.priority, "#C8C8C8")
+            is_focus = (todo.id == focus_todo_id)
+            effective_status = "focus" if is_focus else todo.status
+            icon    = STATUS_ICONS.get(effective_status, "○")
+            tc      = STATUS_COLORS.get(effective_status, "#C8C8C8")
             title_s = escape(todo.title[:38])
             ctx_s   = escape((todo.context or "")[:25])
             dur_s   = _fmt_duration(todo.total_duration_s) if todo.total_duration_s else ""
             sess_s  = f"{todo.total_sessions}×" if todo.total_sessions else ""
             stats   = f"{sess_s} {dur_s}".strip()
-
-            dim = todo.status in ("done", "dropped")
-            tc  = "#444466" if dim else p_color
 
             if selected:
                 # Markierte Zeile: heller Hintergrund-Effekt via reverse
@@ -500,8 +511,6 @@ class WorkApp(App):
             # Titel + Modus nur jede Minute aktualisieren
             if tick % 60 == 1:
                 mode = detect_mode(self.cfg.schedule, now)
-                # In WorkApp nur Arbeit-relevante Labels – PRIVAT/WOCHENENDE
-                # dürfen hier nicht erscheinen (Nutzer ist manuell in Work-Modus)
                 mode_label = "FEIERABEND" if mode == Mode.HANDOVER else "ARBEIT"
                 self.title = (
                     f"tui-log  ·  {mode_label}  ·  "
@@ -820,16 +829,6 @@ class WorkApp(App):
         panel.display = self._todos_visible
 
 
-    # ── Modus wechseln ───────────────────────────────────────────────────────
-
-    def action_goto_work(self) -> None:
-        self.exit("work")
-
-    def action_goto_family(self) -> None:
-        self.exit("family")
-
-    def action_goto_weekend(self) -> None:
-        self.exit("weekend")
     # ── Refresh ──────────────────────────────────────────────────────────────
 
     def action_refresh_all(self) -> None:

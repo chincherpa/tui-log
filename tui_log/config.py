@@ -19,7 +19,6 @@ class ScheduleConfig:
     work_start: time
     work_end: time
     handover_window: int          # Minuten
-    weekend_days: list[int]       # 0=Mo … 6=So
 
     @classmethod
     def from_dict(cls, d: dict) -> "ScheduleConfig":
@@ -30,7 +29,6 @@ class ScheduleConfig:
             work_start=_parse_time(d["work_start"]),
             work_end=_parse_time(d["work_end"]),
             handover_window=int(d.get("handover_window", 15)),
-            weekend_days=list(d.get("weekend_days", [5, 6])),
         )
 
 @dataclass
@@ -82,7 +80,6 @@ class AppConfig:
             f"  DB:        {self.db_path}",
             f"  Arbeitszeit: {s.work_start.strftime('%H:%M')} – {s.work_end.strftime('%H:%M')}",
             f"  Handover:  {s.handover_window} min",
-            f"  Wochenende: Tage {s.weekend_days}",
             f"  Projekte:  {', '.join(self.projects) or '–'}",
             "",
             self.tags.summary(),

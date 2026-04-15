@@ -22,7 +22,7 @@ from .schema import get_connection
 
 # ── Typen ─────────────────────────────────────────────────────────────────────
 
-Status   = Literal["open", "active", "paused", "done", "dropped"]
+Status   = Literal["open", "active", "paused", "done", "dropped", "cancelled"]
 Priority = Literal["high", "normal", "low"]
 TodoMode = Literal["work"]
 LogMode  = Literal["work"]

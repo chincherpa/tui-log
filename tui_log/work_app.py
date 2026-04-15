@@ -5,7 +5,7 @@ Work-Modus TUI – Haupt-App.
 
 Layout:
   ┌─ Header: Modus · Datum · Uhrzeit · Fokus ──────────────────┐
-  │  LOG-PANEL (links 2/3)   │  TODO-PANEL (rechts 1/3)        │
+  │  LOG-PANEL (links 1/2)   │  TODO-PANEL (rechts 1/2)        │
   │  carry-over Warnung      │  aktive Session Badge            │
   │  morgen-Bar              │  Todo-Liste                      │
   │  Log-Einträge            │                                  │
@@ -119,14 +119,16 @@ STATUS_ICONS = {
     "active":  "[bold green]▶[/]",
     "paused":  "[dim]‖[/]",
     "done":    "[dim]✓[/]",
-    "dropped": "[dim]✗[/]",
-    "focus":   "[bold #55CCFF]◉[/]",
+    "dropped":   "[dim]✗[/]",
+    "cancelled": "[#8B0000]✗[/]",
+    "focus":     "[bold #55CCFF]◉[/]",
 }
 
 STATUS_COLORS = {
-    "done":    "#2E7D32",   # dunkelgrün
-    "active":  "#66FF66",   # hellgrün
-    "paused":  "#FFD700",   # gelb
+    "done":      "#2E7D32",   # dunkelgrün
+    "active":    "#66FF66",   # hellgrün
+    "paused":    "#FFD700",   # gelb
+    "cancelled": "#8B0000",   # dunkelrot
     "dropped": "#8B0000",   # dunkelrot
     "focus":   "#55CCFF",   # hellblau
     "open":    "#C8C8C8",   # neutral grau
@@ -224,7 +226,7 @@ class WorkApp(App):
         Binding("t",         "toggle_todos",    "Todos",        show=True),
         Binding("tab",       "next_tag",        "Tag",          show=False),
         Binding("up,k",      "todo_up",         "Todo ↑",       show=False),
-        Binding("x",         "todo_delete",     "✗ Löschen",    show=False),
+        Binding("x",         "todo_delete",     "✗ Cancel",     show=False),
     ]
 
     # Reaktiver State
@@ -352,7 +354,8 @@ class WorkApp(App):
         self._todos.sort(key=lambda t: (
             0 if t.status in ("active",)
             else 1 if t.status in ("open", "paused")
-            else 2,
+            else 2 if t.status == "done"
+            else 3,
             t.created_at,
         ))
         # Index auf selbe Todo-ID zurücksetzen wenn noch vorhanden
@@ -662,21 +665,22 @@ class WorkApp(App):
         self.notify(f"✓  {todo.title[:40]}", timeout=2)
 
     def action_todo_delete(self) -> None:
-        """x: selektiertes Todo löschen – mit Bestätigung."""
+        """x: selektiertes Todo canceln – mit Bestätigung."""
         if not self._todos:
             return
         todo = self._todos[self._todo_idx]
+        if todo.status == "cancelled":
+            return
 
         def on_confirm(confirmed: bool) -> None:
             if not confirmed:
                 return
-            db.todo_delete(self.db_path, todo.id)
-            self._todo_idx = max(0, self._todo_idx - 1)
+            db.todo_set_status(self.db_path, todo.id, "cancelled")
             self._load_todos()
-            self.notify(f"✗  '{todo.title[:40]}' gelöscht", timeout=2)
+            self.notify(f"✗  '{todo.title[:40]}' cancelled", timeout=2)
 
         self.push_screen(
-            _ConfirmModal(f"'{todo.title[:50]}' wirklich löschen?"),
+            _ConfirmModal(f"'{todo.title[:50]}' wirklich canceln?"),
             on_confirm,
         )
 

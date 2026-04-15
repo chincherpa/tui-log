@@ -295,7 +295,7 @@ def day_set_morning(
     energy: int,
     date_str: str | None = None,
 ) -> DayMeta:
-    """Morgen-Ritual speichern."""
+    """Optionale Tages-Metadaten (Fokus/Energie) speichern."""
     date_str = date_str or _today()
     day_get_or_create(db_path, date_str)
     with get_connection(db_path) as conn:

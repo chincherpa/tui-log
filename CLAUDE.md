@@ -57,7 +57,6 @@ Tags are defined in `config.toml` under `[tags.work]`, `[tags.family]`, `[tags.w
 | `modes/family.py` | Family-mode app — simplified log + evening ritual |
 | `modes/weekend.py` | Weekend-mode app — project list + log |
 | `views/weekly.py` | Weekly review `Screen` (shared across all modes, opened with `w`) |
-| `widgets/morning.py` | Morning ritual modal (focus + energy, shown once per day) |
 | `widgets/focus.py` | Focus session modal with live timer |
 | `widgets/debriefing.py` | Post-session outcome + log entry modal |
 | `widgets/new_todo.py` | New todo modal |

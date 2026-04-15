@@ -82,11 +82,6 @@ Die Datenbank `journal.db` wird beim ersten Start automatisch neben der `config.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-**Beim Start** erscheint einmalig das Morgen-Ritual (wenn noch kein Fokus für heute gesetzt):
-- Fokus des Tages eingeben
-- Energie auf einer Skala von 1–5 setzen (← →)
-- Carry-over: offene `[block]`-Einträge vom Vortag werden angezeigt
-
 **Carry-over-Leiste** erscheint oben wenn ungelöste Blocks aus Vortagen existieren.
 
 **Session-Bar** im Todo-Panel zeigt den laufenden Timer einer aktiven Focus-Session sekündlich (`▶ 00:23:11`). Der Timer läuft auch wenn das Focus-Modal minimiert ist.
@@ -495,7 +490,6 @@ tui-log/
     │
     └── widgets/
         ├── log_input.py          ← Input-Subklasse (Tab = Tag, kein Focus-Cycle)
-        ├── morning.py            ← Morgen-Ritual Modal
         ├── focus.py              ← Focus-Session Modal
         ├── debriefing.py         ← Session-Debriefing Modal
         └── new_todo.py           ← Neues-Todo Modal
@@ -521,13 +515,13 @@ Alle Daten liegen in einer lokalen SQLite-Datei (`journal.db`). WAL-Mode aktivie
 | `content` | TEXT | Freitext |
 | `todo_id` | INTEGER | FK → todos (optional) |
 
-**`day_meta`** – Morgen-/Abend-Ritual pro Tag
+**`day_meta`** – Tages-Metadaten pro Tag
 
 | Feld | Beschreibung |
 |------|--------------|
 | `date` PK | ISO-Datum |
-| `morning_focus` | Fokus des Tages |
-| `morning_energy` | 1–5 |
+| `morning_focus` | Optionaler Tagesfokus (Bestandsdaten) |
+| `morning_energy` | Optionaler Energie-Wert 1–5 (Bestandsdaten) |
 | `evening_done` | Was erledigt wurde |
 | `evening_open` | Carry-over für morgen |
 | `day_rating` | `zaeh` / `ok` / `gut` / `sehr_gut` |

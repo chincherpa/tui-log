@@ -44,7 +44,6 @@ from rich.markup import escape
 from .config import AppConfig
 from .mode import detect_mode, Mode
 from . import db_utils as db
-from .widgets.morning import MorningModal
 from .widgets.focus import FocusModal
 from .widgets.debriefing import DebriefingModal
 from .widgets.log_input import LogInput
@@ -288,7 +287,6 @@ class WorkApp(App):
             with Vertical(id="log-panel"):
                 yield Label("", id="log-panel-title")
                 yield Label("", id="carry-over-bar")
-                yield Label("", id="morning-bar")
 
                 with ScrollableContainer(id="log-list"):
                     yield Static("", id="log-list-content")
@@ -313,7 +311,6 @@ class WorkApp(App):
 
     def on_mount(self) -> None:
         self._is_mounted = True
-        self._check_morning_ritual()
         self._load_all()
         self._update_tag_selector()
         self._start_clock()
@@ -374,10 +371,6 @@ class WorkApp(App):
             f"{today_count} Einträge heute{focus_str}{energy_str}"
         )
         self._update("#log-panel-title", Label, title_str)
-
-        if focus:
-            self._update("#morning-bar", Label, f"  Fokus: {focus}{energy_str}")
-            self._add_class("#morning-bar", "visible")
 
         active_cnt  = sum(1 for t in self._todos if t.status in ("open", "active", "paused"))
         done_cnt    = sum(1 for t in self._todos if t.status == "done")
@@ -461,30 +454,6 @@ class WorkApp(App):
             lines.append("")
 
         self._update("#todo-list-content", Static, "\n".join(lines))
-
-    # ── Morgen-Ritual ─────────────────────────────────────────────────────────
-
-    def _check_morning_ritual(self) -> None:
-        meta = db.day_get(self.db_path)
-        if meta:
-            return   # Ritual heute schon angeboten oder erledigt
-
-        # DayMeta sofort anlegen: verhindert erneuten Dialog bei Modus-Wechseln
-        # (z.B. Ctrl+A → WorkApp neu gestartet, aber Ritual schon gesehen)
-        db.day_get_or_create(self.db_path)
-
-        carry_texts = []
-        today = date.today().isoformat()
-        for e in db.log_get_open_blocks(self.db_path, before_date=today)[:4]:
-            carry_texts.append(e.content[:55])
-
-        def on_result(result: tuple[str, int] | None) -> None:
-            if result:
-                focus, energy = result
-                db.day_set_morning(self.db_path, focus=focus, energy=energy)
-            self._load_all()
-
-        self.push_screen(MorningModal(carry_texts), on_result)
 
     # ── Uhr ───────────────────────────────────────────────────────────────────
 

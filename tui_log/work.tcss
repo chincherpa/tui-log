@@ -62,19 +62,6 @@ Footer {
     display: block;
 }
 
-/* Morgen-Info Leiste */
-#morning-bar {
-    height: 1;
-    background: #0D1A0D;
-    color: #00C896;
-    padding: 0 1;
-    display: none;
-}
-
-#morning-bar.visible {
-    display: block;
-}
-
 /* Log-Einträge */
 #log-list {
     height: 1fr;
@@ -253,73 +240,6 @@ Footer {
 .todo-stats {
     color: #444466;
     width: auto;
-}
-
-/* ── Morning Ritual Modal ────────────────────────────────────── */
-
-MorningModal {
-    align: center middle;
-}
-
-#morning-dialog {
-    background: #0D1A0D;
-    border: solid #00C896;
-    width: 60;
-    height: auto;
-    padding: 1 2;
-}
-
-#morning-title {
-    color: #00C896;
-    text-style: bold;
-    height: 1;
-    margin-bottom: 1;
-}
-
-#morning-carry-section {
-    height: auto;
-    margin-bottom: 1;
-}
-
-.morning-carry-item {
-    color: #FF6B6B;
-    height: 1;
-}
-
-#morning-focus-label {
-    color: #C8C8C8;
-    text-style: bold;
-    height: 1;
-}
-
-#morning-focus-input {
-    background: #1A2A1A;
-    color: #E8E8E8;
-    border: solid #2A4A2A;
-    margin-bottom: 1;
-}
-
-#morning-focus-input:focus {
-    border: solid #00C896;
-}
-
-#morning-energy-label {
-    color: #C8C8C8;
-    text-style: bold;
-    height: 1;
-}
-
-#morning-energy-display {
-    color: #00C896;
-    text-style: bold;
-    height: 1;
-    margin-bottom: 1;
-}
-
-#morning-hint {
-    color: #555577;
-    height: 1;
-    margin-top: 1;
 }
 
 /* ── Focus Modal ─────────────────────────────────────────────── */

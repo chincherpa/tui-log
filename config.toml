@@ -19,8 +19,10 @@ start  = { symbol = "▶",  name = "Gestartet",  color = "#5B8DEF", active = tru
 block  = { symbol = "✕",  name = "Blockiert",  color = "#FF6B6B", active = true }
 idea   = { symbol = "💡", name = "Idee",       color = "#C77DFF", active = true }
 fix    = { symbol = "⚡", name = "Fix",        color = "#FFD93D", active = true }
-deploy = { symbol = "⬆",  name = "Deployed",   color = "#4FC3F7", active = true }
-meet   = { symbol = "●",  name = "Meeting",    color = "#FF9A3C", active = true }
+urgent = { symbol = "🔥", name = "Wichtig",    color = "#F03E3E", active = true }
+wait   = { symbol = "⏳", name = "Warten",     color = "#CED4DA", active = true }
+review = { symbol = "👁",  name = "Review",     color = "#339AF0", active = true }
+plan   = { symbol = "📅", name = "Geplant",    color = "#94D82D", active = true }
 
 [tags.family]
 hannah = { symbol = "♥",  name = "Hannah",    color = "#FF85A1", active = true }
@@ -31,6 +33,8 @@ elliot = { symbol = "🐾", name = "Elliot",    color = "#4a6ba0", active = true
 missy  = { symbol = "🐾", name = "Missy",     color = "#8db2ec", active = true }
 high   = { symbol = "★",  name = "Highlight", color = "#FFD93D", active = true }
 schwer = { symbol = "~",  name = "Schwierig", color = "#FF6B6B", active = true }
+mittel = { symbol = "–",  name = "Mittel",    color = "#FFB347", active = true }
+leicht = { symbol = "•",  name = "Leicht",    color = "#51CF66", active = true }
 
 [tags.weekend]
 bau    = { symbol = "🔨", name = "Bauen",      color = "#C8A165", active = true }

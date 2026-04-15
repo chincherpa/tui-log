@@ -49,6 +49,15 @@ Footer {
     width: 100%;
 }
 
+/* Log-Filter-Leiste */
+#log-filter-bar {
+    height: 1;
+    background: #12122A;
+    color: #C8C8C8;
+    padding: 0 0;
+    width: 100%;
+}
+
 /* Carry-over Warnung */
 #carry-over-bar {
     height: auto;

@@ -200,30 +200,33 @@ class WorkApp(App):
     CSS_PATH = "work.tcss"
 
     BINDINGS = [
-        Binding("space,n",    "focus_log_input",  "Log",         show=True),
-        Binding("f",          "start_focus",      "Focus",       show=True),
-        Binding("a",          "add_todo",         "Neu Todo",    show=True),
-        Binding("t",          "toggle_todos",     "Todos",       show=True),
-        Binding("tab",        "next_tag",         "Tag",         show=False),
-        Binding("up,k",       "todo_up",          "Todo ↑",      show=False),
-        Binding("down,j",     "todo_down",        "Todo ↓",      show=False),
-        Binding("enter",      "todo_activate",    "Aktivieren",  show=False),
-        Binding("d",          "todo_done",        "✓ Done",      show=False),
-        Binding("x",          "todo_delete",      "✗ Löschen",   show=False),
-        Binding("shift+tab",  "prev_tag",         "Tag",         show=False),
-        Binding("r",          "refresh_all",      "Refresh",     show=False),
-        Binding("ctrl+a",     "goto_work",    "→ Arbeit",    show=True),
-        Binding("ctrl+f",     "goto_family",  "→ Familie",   show=True),
-        Binding("ctrl+w",     "goto_weekend", "→ Wochenende",show=True),
-        Binding("q",          "quit",             "Beenden",     show=True),
-        Binding("shift+p",    "git_push_db",      "Push DB",     show=True),
+        Binding("a",         "add_todo",        "Neu Todo",     show=True),
+        Binding("b",         "prev_filter",     "Filter ←",     show=False),
+        Binding("n",         "next_filter",     "Filter →",     show=False),
+        Binding("ctrl+a",    "goto_work",       "→ Arbeit",     show=True),
+        Binding("ctrl+f",    "goto_family",     "→ Familie",    show=True),
+        Binding("ctrl+w",    "goto_weekend",    "→ Wochenende", show=True),
+        Binding("d",         "todo_done",       "✓ Done",       show=False),
+        Binding("down,j",    "todo_down",       "Todo ↓",       show=False),
+        Binding("enter",     "todo_activate",   "Aktivieren",   show=False),
+        Binding("f",         "start_focus",     "Focus",        show=True),
+        Binding("q",         "quit",            "Beenden",      show=True),
+        Binding("r",         "refresh_all",     "Refresh",      show=False),
+        Binding("shift+p",   "git_push_db",     "Push DB",      show=True),
+        Binding("shift+tab", "prev_tag",        "Tag",          show=False),
+        Binding("space,n",   "focus_log_input", "Log",          show=True),
+        Binding("t",         "toggle_todos",    "Todos",        show=True),
+        Binding("tab",       "next_tag",        "Tag",          show=False),
+        Binding("up,k",      "todo_up",         "Todo ↑",       show=False),
+        Binding("x",         "todo_delete",     "✗ Löschen",    show=False),
     ]
 
     # Reaktiver State
-    _tag_idx:      reactive[int]  = reactive(0)
-    _todos_visible: reactive[bool] = reactive(True)
+    _tag_idx:        reactive[int]  = reactive(0)
+    _todos_visible:  reactive[bool] = reactive(True)
     _active_session: reactive[db.FocusSession | None] = reactive(None)
-    _clock_str:    reactive[str]  = reactive("")
+    _clock_str:      reactive[str]  = reactive("")
+    _log_filter:     reactive[str | None] = reactive(None)  # None = alle Tags
 
     def __init__(self, config: AppConfig) -> None:
         super().__init__()
@@ -240,6 +243,7 @@ class WorkApp(App):
         self._todo_idx:    int  = 0           # ausgewähltes Todo
         self._active_session_title: str = ""  # gecachter Titel der laufenden Session
         self._active_session_base_s: int = 0  # kumulierte Dauer des Todo vor aktueller Session
+        self._filter_keys: list[str | None] = []  # [None, "done", "start", ...] – wird in on_mount befüllt
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -286,6 +290,7 @@ class WorkApp(App):
             # ── Log-Panel ─────────────────────────────────────
             with Vertical(id="log-panel"):
                 yield Label("", id="log-panel-title")
+                yield Label("", id="log-filter-bar")
                 yield Label("", id="carry-over-bar")
 
                 with ScrollableContainer(id="log-list"):
@@ -311,8 +316,11 @@ class WorkApp(App):
 
     def on_mount(self) -> None:
         self._is_mounted = True
+        # Filter-Liste aufbauen: [None, tag1, tag2, ...]
+        self._filter_keys = [None] + [t.key for t in self._work_tags]
         self._load_all()
         self._update_tag_selector()
+        self._render_filter_bar()
         self._start_clock()
         self._check_active_session()
 
@@ -381,13 +389,21 @@ class WorkApp(App):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def _render_log(self) -> None:
-        if not self._log_entries:
-            content = "[dim]  (noch keine Einträge)[/]"
+        entries = self._log_entries
+        if self._log_filter is not None:
+            entries = [e for e in entries if e.tag_key == self._log_filter]
+        if not entries:
+            if self._log_filter is not None:
+                tag = self.tags.get(self._log_filter)
+                label = f"{tag.symbol} {tag.key}" if tag else self._log_filter
+                content = f"[dim]  (keine Einträge für {label})[/]"
+            else:
+                content = "[dim]  (noch keine Einträge)[/]"
         else:
             today = date.today().isoformat()
             lines = []
             current_date = None
-            for e in self._log_entries:
+            for e in entries:
                 if e.date != current_date:
                     current_date = e.date
                     if e.date == today:
@@ -533,6 +549,46 @@ class WorkApp(App):
             return
         tag = self._work_tags[self._tag_idx]
         self._update("#tag-selector", Label, f"[bold {tag.color}] {tag.symbol} {tag.key} [/]")
+
+    # ── Log-Filter ────────────────────────────────────────────────────────────
+
+    def action_next_filter(self) -> None:
+        if not self._filter_keys:
+            return
+        idx = self._filter_keys.index(self._log_filter) if self._log_filter in self._filter_keys else 0
+        self._log_filter = self._filter_keys[(idx + 1) % len(self._filter_keys)]
+        self._render_filter_bar()
+        self._render_log()
+
+    def action_prev_filter(self) -> None:
+        if not self._filter_keys:
+            return
+        idx = self._filter_keys.index(self._log_filter) if self._log_filter in self._filter_keys else 0
+        self._log_filter = self._filter_keys[(idx - 1) % len(self._filter_keys)]
+        self._render_filter_bar()
+        self._render_log()
+
+    def _render_filter_bar(self) -> None:
+        """Filter-Leiste: zeigt alle Tags als Chips, aktiver hervorgehoben."""
+        if not self._filter_keys:
+            return
+        parts = []
+        for key in self._filter_keys:
+            if key is None:
+                label = "Alle"
+                if self._log_filter is None:
+                    parts.append("[bold reverse #5B8DEF] Alle [/]")
+                else:
+                    parts.append("[dim]Alle[/]")
+            else:
+                tag = self.tags.get(key)
+                sym = tag.symbol if tag else "·"
+                color = tag.color if tag else "#888888"
+                if self._log_filter == key:
+                    parts.append(f"[bold reverse {color}] {sym} {key} [/]")
+                else:
+                    parts.append(f"[dim]{sym} {key}[/]")
+        self._update("#log-filter-bar", Label, "  " + "  ".join(parts) + "   [dim]\\[  ] Filter[/]")
 
     @on(Input.Submitted, "#log-text-input")
     def log_submitted(self, event: Input.Submitted) -> None:

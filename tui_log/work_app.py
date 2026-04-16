@@ -48,6 +48,7 @@ from .widgets.focus import FocusModal
 from .widgets.debriefing import DebriefingModal
 from .widgets.log_input import LogInput
 from .widgets.new_todo import NewTodoModal
+from .widgets.content_view import ContentEditModal, ContentView
 
 
 # ── Tag-Hilfsfunktionen ───────────────────────────────────────────────────────
@@ -223,6 +224,8 @@ class WorkApp(App):
         Binding("shift+p",   "git_push_db",     "Push DB",      show=True),
         Binding("shift+tab", "prev_tag",        "Tag",          show=False),
         Binding("space,n",   "focus_log_input", "Log",          show=True),
+        Binding("v",         "view_latest",     "View Entry",  show=False),
+        Binding("e",         "edit_entry",      "Edit Entry",  show=False),
         Binding("t",         "toggle_todos",    "Todos",        show=True),
         Binding("tab",       "next_tag",        "Tag",          show=False),
         Binding("up,k",      "todo_up",         "Todo ↑",       show=False),
@@ -252,6 +255,7 @@ class WorkApp(App):
         self._active_session_title: str = ""  # gecachter Titel der laufenden Session
         self._active_session_base_s: int = 0  # kumulierte Dauer des Todo vor aktueller Session
         self._filter_keys: list[str | None] = []  # [None, "done", "start", ...] – wird in on_mount befüllt
+        self._displayed_entry_id: int | None = None
 
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
@@ -302,7 +306,7 @@ class WorkApp(App):
                 yield Label("", id="carry-over-bar")
 
                 with ScrollableContainer(id="log-list"):
-                    yield Static("", id="log-list-content")
+                    yield ListView(id="log-list-view")
 
                 with Horizontal(id="log-input-row"):
                     yield Label("", id="tag-selector")
@@ -310,6 +314,12 @@ class WorkApp(App):
                         placeholder="Eintrag… (Tab = Tag wechseln)",
                         id="log-text-input",
                     )
+
+            # ── Content-Panel (mittig, fixe Breite) ─────────────────
+            with Vertical(id="content-panel"):
+                yield Label("", id="content-panel-title")
+                with ScrollableContainer(id="content-panel-body"):
+                    yield ContentView("", id="log-entry-content")
 
             # ── Todo-Panel ────────────────────────────────────
             with Vertical(id="todo-panel"):
@@ -404,40 +414,41 @@ class WorkApp(App):
         entries = self._log_entries
         if self._log_filter is not None:
             entries = [e for e in entries if e.tag_key == self._log_filter]
-        if not entries:
-            if self._log_filter is not None:
-                tag = self.tags.get(self._log_filter)
-                label = f"{tag.symbol} {tag.key}" if tag else self._log_filter
-                content = f"[dim]  (keine Einträge für {label})[/]"
+        lv = self._q("#log-list-view", ListView)
+        if lv is not None:
+            lv.clear()
+            if not entries:
+                if self._log_filter is not None:
+                    tag = self.tags.get(self._log_filter)
+                    label = f"{tag.symbol} {tag.key}" if tag else self._log_filter
+                    lv.append(ListItem(Static(f"[dim]  (keine Einträge für {label})[/]")))
+                else:
+                    lv.append(ListItem(Static("[dim]  (noch keine Einträge)[/]") ))
             else:
-                content = "[dim]  (noch keine Einträge)[/]"
-        else:
-            today = date.today().isoformat()
-            lines = []
-            current_date = None
-            for e in entries:
-                if e.date != current_date:
-                    current_date = e.date
-                    if e.date == today:
-                        date_label = "Heute"
-                    else:
-                        try:
-                            d = date.fromisoformat(e.date)
-                            date_label = d.strftime("%a, %d. %b %Y")
-                        except Exception:
-                            date_label = e.date
-                    lines.append(f"\n[dim]── {date_label} ──────────────────────[/]")
-                tag = self.tags.get(e.tag_key)
-                symbol = tag.symbol if tag else "·"
-                color  = tag.color  if tag else "#888888"
-                time_s = _fmt_time(e.created_at)
-                tag_s  = f"{symbol} {e.tag_key:<{7 - (_sym_w(symbol) - 1)}}"
-                lines.append(
-                    f"[dim]{time_s}[/]  [bold {color}]{tag_s}[/]  {escape(e.content)}"
-                )
-            content = "\n".join(lines).lstrip("\n")
+                today = date.today().isoformat()
+                current_date = None
+                for e in entries:
+                    if e.date != current_date:
+                        current_date = e.date
+                        if e.date == today:
+                            date_label = "Heute"
+                        else:
+                            try:
+                                d = date.fromisoformat(e.date)
+                                date_label = d.strftime("%a, %d. %b %Y")
+                            except Exception:
+                                date_label = e.date
+                        lv.append(ListItem(Static(f"[dim]── {date_label} ──────────────────────[/]")))
+                    lv.append(ListItem(LogEntryWidget(e, self.tags)))
 
-        self._update("#log-list-content", Static, content)
+        # Zeige Detail-Content des neuesten Eintrags (falls vorhanden)
+        if entries:
+            self._displayed_entry_id = entries[0].id
+            self._update("#log-entry-content", ContentView, escape(entries[0].content))
+        else:
+            self._displayed_entry_id = None
+            self._update("#log-entry-content", ContentView, "[dim]  (kein Inhalt)[/]")
+
         # Nach oben scrollen – neueste Einträge zuerst
         w = self._q("#log-list", ScrollableContainer)
         if w is not None:
@@ -571,6 +582,71 @@ class WorkApp(App):
         self._render_filter_bar()
         self._render_log()
 
+    def action_view_latest(self) -> None:
+        """Tastenkürzel: zeigt den Inhalt des neuesten Log-Eintrags an."""
+        if self._log_entries:
+            self._update("#log-entry-content", ContentView, escape(self._log_entries[0].content))
+        else:
+            self._update("#log-entry-content", ContentView, "[dim]  (kein Inhalt)[/]")
+
+    def action_edit_entry(self) -> None:
+        """Öffnet einen Editor für den aktuell angezeigten Log-Eintrag."""
+        if not self._displayed_entry_id:
+            self.notify("Kein Eintrag ausgewählt", timeout=2)
+            return
+
+        entry = db.log_get(self.db_path, self._displayed_entry_id)
+        if not entry:
+            self.notify("Eintrag nicht gefunden", severity="error", timeout=2)
+            return
+
+        def _on_result(result: str | None) -> None:
+            if result is None:
+                return
+            try:
+                db.log_update(self.db_path, entry.id, content=result)
+                self._load_log()
+                self._update_headers()
+                self.notify("Eintrag gespeichert", timeout=2)
+            except Exception as e:
+                import logging, traceback
+                logging.error(f"edit_entry save failed:\n{traceback.format_exc()}")
+                self.notify(f"Fehler beim Speichern: {e}", severity="error", timeout=4)
+
+        self.push_screen(ContentEditModal(entry.content), _on_result)
+
+    @on(ListView.Highlighted)
+    def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:
+        """When the highlighted item changes (arrow keys), update the middle content panel."""
+        item = getattr(message, "item", None)
+        if item is None:
+            return
+        try:
+            lew = item.query_one(LogEntryWidget)
+        except Exception:
+            return
+        entry = getattr(lew, "entry", None)
+        if not entry:
+            return
+        self._displayed_entry_id = entry.id
+        self._update("#log-entry-content", ContentView, escape(entry.content))
+
+    @on(ListView.Selected)
+    def on_list_view_selected(self, message: ListView.Selected) -> None:
+        """When an item is selected (Enter), also update content and focus content panel."""
+        item = getattr(message, "item", None)
+        if item is None:
+            return
+        try:
+            lew = item.query_one(LogEntryWidget)
+        except Exception:
+            return
+        entry = getattr(lew, "entry", None)
+        if not entry:
+            return
+        self._displayed_entry_id = entry.id
+        self._update("#log-entry-content", ContentView, escape(entry.content))
+
     def action_prev_filter(self) -> None:
         if not self._filter_keys:
             return
@@ -600,6 +676,20 @@ class WorkApp(App):
                 else:
                     parts.append(f"[dim]{sym} {key}[/]")
         self._update("#log-filter-bar", Label, "  " + "  ".join(parts) + "   [dim]\\[  ] Filter[/]")
+
+    @on(ListView.Selected, "#log-list-view")
+    def _on_log_selected(self, event) -> None:
+        """When a log list item is selected, show its full content in the detail pane."""
+        try:
+            li = event.item
+            widget = li.query_one(LogEntryWidget, expect_none=True)
+            if widget is None:
+                return
+            entry = widget.entry
+            self._displayed_entry_id = entry.id
+            self._update("#log-entry-content", ContentView, escape(entry.content))
+        except Exception:
+            pass
 
     @on(Input.Submitted, "#log-text-input")
     def log_submitted(self, event: Input.Submitted) -> None:

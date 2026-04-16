@@ -164,6 +164,29 @@ def log_get(db_path: Path, entry_id: int) -> LogEntry | None:
         ).fetchone()
     return _row_to_log(row) if row else None
 
+def log_update(
+    db_path: Path,
+    entry_id: int,
+    content: str | None = None,
+    tag_key: str | None = None,
+    resolved: int | None = None,
+) -> LogEntry | None:
+    """Aktualisiert Felder eines Log-Eintrags; nur übergebene Felder werden gesetzt."""
+    fields: list[str] = []
+    params: list = []
+    if content is not None:
+        fields.append("content = ?"); params.append(content.strip())
+    if tag_key is not None:
+        fields.append("tag_key = ?"); params.append(tag_key)
+    if resolved is not None:
+        fields.append("resolved = ?"); params.append(1 if resolved else 0)
+    if not fields:
+        return log_get(db_path, entry_id)
+    params.append(entry_id)
+    with get_connection(db_path) as conn:
+        conn.execute(f"UPDATE log_entries SET {', '.join(fields)} WHERE id = ?", params)
+    return log_get(db_path, entry_id)
+
 def log_get_day(
     db_path: Path,
     date_str: str | None = None,

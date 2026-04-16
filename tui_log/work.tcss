@@ -392,3 +392,31 @@ HandoverModal {
     color: #555577;
     height: 1;
 }
+
+/* ── Content-Panel (mittlere Spalte, fixe Breite) ───────────────── */
+
+#content-panel {
+    width: 48; /* fixe Spaltenbreite in Zeichen */
+    border: solid #2A2A44;
+    background: #0D0D1A;
+    padding: 0 1;
+}
+
+#content-panel-title {
+    background: #12122A;
+    color: #5B8DEF;
+    height: 1;
+    padding: 0 1;
+    text-style: bold;
+    width: 100%;
+}
+
+#content-panel-body {
+    height: 1fr;
+    overflow-y: auto;
+    scrollbar-color: #2A2A44 #0D0D1A;
+}
+
+.content-view {
+    color: #C8C8C8;
+}

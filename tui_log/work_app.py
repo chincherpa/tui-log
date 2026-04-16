@@ -259,6 +259,63 @@ class _ConfirmModal(ModalScreen[bool]):
         self.dismiss(False)
 
 
+# ── Tag-Auswahl-Modal ─────────────────────────────────────────────────────────
+
+class TagSelectModal(ModalScreen):
+    """Tag-Picker für Log-Einträge. Gibt den gewählten tag_key zurück oder None."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Abbrechen"),
+    ]
+
+    DEFAULT_CSS = """
+    TagSelectModal { align: center middle; }
+    #tag-select-dialog {
+        background: #0E1117;
+        border: solid #334;
+        width: 38;
+        height: auto;
+        padding: 1 2;
+    }
+    #tag-select-title { color: #666688; margin-bottom: 1; }
+    #tag-select-hint  { color: #444466; margin-top: 1; }
+    """
+
+    def __init__(self, tags, current_key: str) -> None:
+        super().__init__()
+        self._tag_list = list(tags)
+        self._current  = current_key
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="tag-select-dialog"):
+            yield Label("Tag wählen", id="tag-select-title")
+            yield ListView(id="tag-list")
+            yield Label("↑↓ Navigieren  Enter Übernehmen  Esc Abbrechen", id="tag-select-hint")
+
+    def on_mount(self) -> None:
+        lv = self.query_one("#tag-list", ListView)
+        current_idx = 0
+        for i, tag in enumerate(self._tag_list):
+            sym_pad = " " * (2 - _sym_w(tag.symbol))
+            row = f"[bold {tag.color}]{tag.symbol}{sym_pad} {tag.key:<8}[/]  [dim]{tag.name}[/]"
+            lv.append(ListItem(Static(row)))
+            if tag.key == self._current:
+                current_idx = i
+        lv.index = current_idx
+        lv.focus()
+
+    @on(ListView.Selected, "#tag-list")
+    def _selected(self, event: ListView.Selected) -> None:
+        idx = event.list_view.index
+        if idx is not None and 0 <= idx < len(self._tag_list):
+            self.dismiss(self._tag_list[idx].key)
+        else:
+            self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
 # ── Haupt-App ─────────────────────────────────────────────────────────────────
 
 class WorkApp(App):
@@ -270,6 +327,7 @@ class WorkApp(App):
         Binding("b",         "prev_filter",     "Filter ←",     show=False),
         Binding("d",         "todo_done",       "✓ Done",       show=False),
         Binding("down,k",    "todo_down",       "Todo ↓",       show=False),
+        Binding("c",         "change_tag",      "Tag",         show=False),
         Binding("e",         "edit_entry",      "Edit Entry",  show=False),
         Binding("enter",     "todo_activate",   "Aktivieren",   show=False),
         Binding("f",         "start_focus",     "Focus",        show=True),
@@ -658,6 +716,30 @@ class WorkApp(App):
                 self.notify(f"Fehler beim Speichern: {e}", severity="error", timeout=4)
 
         self.push_screen(ContentEditModal(entry.content), _on_result)
+
+    def action_change_tag(self) -> None:
+        """Tag des aktuell angezeigten Log-Eintrags ändern."""
+        if not self._displayed_entry_id:
+            self.notify("Kein Eintrag ausgewählt", timeout=2)
+            return
+        entry = db.log_get(self.db_path, self._displayed_entry_id)
+        if not entry:
+            self.notify("Eintrag nicht gefunden", severity="error", timeout=2)
+            return
+
+        def _on_result(new_key: str | None) -> None:
+            if new_key is None or new_key == entry.tag_key:
+                return
+            try:
+                db.log_update(self.db_path, entry.id, tag_key=new_key)
+                self._load_log()
+                self._update_headers()
+                self.notify(f"Tag → {new_key}", timeout=2)
+            except Exception as e:
+                logging.error(f"change_tag failed:\n{traceback.format_exc()}")
+                self.notify(f"Fehler: {e}", severity="error", timeout=4)
+
+        self.push_screen(TagSelectModal(self.tags, entry.tag_key), _on_result)
 
     @on(ListView.Highlighted)
     def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Iterator
 
 # Erlaubte Kategorien – bestimmt in welchem Modus ein Tag auftaucht
-CATEGORIES = ("work", "family", "weekend", "any")
+CATEGORIES = ("work", "any")
 
 @dataclass(frozen=True)
 class Tag:

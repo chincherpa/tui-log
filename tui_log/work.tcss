@@ -30,7 +30,7 @@ Footer {
 /* ── Log-Panel (links, breiter) ──────────────────────────────── */
 
 #log-panel {
-    width: 2fr;
+    width: 1fr;
     border: solid #2A2A44;
     background: #0D0D1A;
     padding: 0 1;

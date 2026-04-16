@@ -465,7 +465,6 @@ class WorkApp(App):
             effective_status = "focus" if is_focus else todo.status
             icon    = STATUS_ICONS.get(effective_status, "○")
             tc      = STATUS_COLORS.get(effective_status, "#C8C8C8")
-            title_s = escape(todo.title[:38])
             ctx_s   = escape((todo.context or "")[:25])
             dur_s   = _fmt_duration(todo.total_duration_s) if todo.total_duration_s else ""
             sess_s  = f"{todo.total_sessions}×" if todo.total_sessions else ""
@@ -474,10 +473,10 @@ class WorkApp(App):
             if selected:
                 # Markierte Zeile: heller Hintergrund-Effekt via reverse
                 arrow = "[bold #5B8DEF]▶[/]"
-                line1 = f"{arrow} {icon}  [bold reverse {tc}] {title_s} [/]"
-                line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "") +                         "  [dim][f] Focus  [Enter] Aktiv  [d] Done  [x] Löschen[/]"
+                line1 = f"{arrow} {icon}  [bold reverse {tc}] {todo.title}[/]"
+                line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "") +                         "  [dim][f] Focus  [Enter] Aktiv  [d] Done  [x] Cancel[/]"
             else:
-                line1 = f"  {icon}  [bold {tc}]{title_s}[/]"
+                line1 = f"  {icon}  [bold {tc}]{todo.title}[/]"
                 line2 = f"     [dim]{ctx_s}[/]" + (f"  [dim]{stats}[/]" if stats else "")
 
             lines.append(f"{line1}\n{line2}")

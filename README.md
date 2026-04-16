@@ -158,8 +158,8 @@ Der Tag-Selector passt sich automatisch ans aktive Projekt an (Gartenhaus → `[
 | `Tab` *(im Input)* | Tag vorwärts |
 | `Shift+Tab` *(im Input)* | Tag rückwärts |
 | `Enter` *(im Input)* | Log-Eintrag speichern |
-| `↑` / `k` | Todo nach oben |
-| `↓` / `j` | Todo nach unten |
+| `↑` / `j` | Todo nach oben |
+| `↓` / `k` | Todo nach unten |
 | `Enter` *(auf Todo)* | Todo aktivieren / pausieren |
 | `f` | Focus-Session mit selektiertem Todo starten |
 | `d` | Selektiertes Todo als done markieren |

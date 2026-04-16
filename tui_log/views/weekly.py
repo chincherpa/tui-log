@@ -162,9 +162,6 @@ class WeeklyScreen(Screen):
         lines.append("[#1A2A2A]" + "─" * 60 + "[/]")
         lines.append("")
 
-        # ── Arbeit ───────────────────────────────────────────────────────────
-        lines.append("[bold #5B8DEF]ARBEIT[/]")
-
         done_cnt  = s.log_counts.get("done",  0)
         fix_cnt   = s.log_counts.get("fix",   0)
         idea_cnt  = s.log_counts.get("idea",  0)

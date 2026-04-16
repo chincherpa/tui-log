@@ -164,6 +164,66 @@ class TodoItemWidget(Static):
         self.todo = todo
 
 
+class TodoListContent(Static):
+    """Subclass von Static, die Pfeiltasten im Todo-Panel abfängt.
+
+    Leitet relevante Tasten an die App-Actions weiter und verhindert
+    das Standard-Scrollen des Containers.
+    """
+
+    def _on_key(self, event) -> None:
+        k = event.key
+        # Navigation
+        if k in ("up", "j"):
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_todo_up()
+            except Exception:
+                pass
+        elif k in ("down", "k"):
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_todo_down()
+            except Exception:
+                pass
+        # Aktionen auf dem selektierten Todo
+        elif k == "enter":
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_todo_activate()
+            except Exception:
+                pass
+        elif k == "f":
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_start_focus()
+            except Exception:
+                pass
+        elif k == "d":
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_todo_done()
+            except Exception:
+                pass
+        elif k == "x":
+            event.prevent_default()
+            event.stop()
+            try:
+                self.app.action_todo_delete()
+            except Exception:
+                pass
+        else:
+            try:
+                super()._on_key(event)
+            except Exception:
+                pass
+
+
 
 # ── Bestätigungs-Modal ────────────────────────────────────────────────────────
 
@@ -214,21 +274,21 @@ class WorkApp(App):
     BINDINGS = [
         Binding("a",         "add_todo",        "Neu Todo",     show=True),
         Binding("b",         "prev_filter",     "Filter ←",     show=False),
-        Binding("n",         "next_filter",     "Filter →",     show=False),
         Binding("d",         "todo_done",       "✓ Done",       show=False),
-        Binding("down,j",    "todo_down",       "Todo ↓",       show=False),
+        Binding("down,k",    "todo_down",       "Todo ↓",       show=False),
+        Binding("e",         "edit_entry",      "Edit Entry",  show=False),
         Binding("enter",     "todo_activate",   "Aktivieren",   show=False),
         Binding("f",         "start_focus",     "Focus",        show=True),
+        Binding("n",         "next_filter",     "Filter →",     show=False),
         Binding("q",         "quit",            "Beenden",      show=True),
         Binding("r",         "refresh_all",     "Refresh",      show=False),
         Binding("shift+p",   "git_push_db",     "Push DB",      show=True),
         Binding("shift+tab", "prev_tag",        "Tag",          show=False),
         Binding("space,n",   "focus_log_input", "Log",          show=True),
-        Binding("v",         "view_latest",     "View Entry",  show=False),
-        Binding("e",         "edit_entry",      "Edit Entry",  show=False),
         Binding("t",         "toggle_todos",    "Todos",        show=True),
         Binding("tab",       "next_tag",        "Tag",          show=False),
-        Binding("up,k",      "todo_up",         "Todo ↑",       show=False),
+        Binding("up,j",      "todo_up",         "Todo ↑",       show=False),
+        Binding("v",         "view_latest",     "View Entry",  show=False),
         Binding("x",         "todo_delete",     "✗ Cancel",     show=False),
     ]
 
@@ -326,7 +386,7 @@ class WorkApp(App):
                 yield Label("", id="todo-panel-title")
                 yield Label("", id="active-session-bar")
                 with ScrollableContainer(id="todo-list"):
-                    yield Static("", id="todo-list-content")
+                        yield TodoListContent("", id="todo-list-content")
 
         yield Footer()
 
@@ -521,16 +581,7 @@ class WorkApp(App):
             else:
                 sess_label = ""
 
-            # Titel + Modus nur jede Minute aktualisieren
-            if tick % 60 == 1:
-                mode = detect_mode(self.cfg.schedule, now)
-                mode_label = "FEIERABEND" if mode == Mode.HANDOVER else "ARBEIT"
-                self.title = (
-                    f"tui-log  ·  {mode_label}  ·  "
-                    f"{now.strftime('%A, %d. %b')}  ·  "
-                    f"{now.strftime('%H:%M')}"
-                    f"{sess_label}"
-                )
+            self.title = ('')
 
             await asyncio.sleep(1)
 
@@ -934,6 +985,15 @@ class WorkApp(App):
             return
         self._todos_visible = not self._todos_visible
         panel.display = self._todos_visible
+        # Wenn das Todo-Panel sichtbar wird, fokusieren wir die Todo-Liste
+        # damit Pfeiltasten dort statt am Container verarbeitet werden.
+        if self._todos_visible:
+            w = self._q("#todo-list-content", TodoListContent)
+            if w is not None:
+                try:
+                    w.focus()
+                except Exception:
+                    pass
 
 
     # ── Refresh ──────────────────────────────────────────────────────────────

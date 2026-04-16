@@ -8,7 +8,7 @@ Quelle: config.toml  →  dict[str, Tag]
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 

@@ -25,12 +25,15 @@ Keybindings:
 from __future__ import annotations
 
 import asyncio
+import logging
+import traceback
 import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.reactive import reactive
@@ -42,7 +45,6 @@ from textual import on, work
 from rich.markup import escape
 
 from .config import AppConfig
-from .mode import detect_mode, Mode
 from . import db_utils as db
 from .widgets.focus import FocusModal
 from .widgets.debriefing import DebriefingModal
@@ -77,8 +79,17 @@ def _fmt_time(iso_dt: str) -> str:
     """'2026-03-31 09:14:32' → '09:14'"""
     try:
         return iso_dt[11:16]
-    except Exception:
+    except TypeError:
         return "??:??"
+
+
+def _fmt_content(content: str) -> str:
+    """Erste Zeile als Titel hervorheben, Rest als Body."""
+    parts = content.split("\n", 1)
+    title = f"[bold]{escape(parts[0])}[/bold]"
+    if len(parts) > 1 and parts[1].strip():
+        return title + "\n[dim]─────────────────────[/dim]\n" + escape(parts[1])
+    return title
 
 
 def _fmt_duration(seconds: int) -> str:
@@ -101,7 +112,8 @@ class LogEntryWidget(Static):
         symbol = tag.symbol if tag else "·"
         color  = tag.color  if tag else "#888888"
         time_s = _fmt_time(entry.created_at)
-        tag_s  = f"{symbol} {entry.tag_key:<6}"
+        sym_pad = " " * (2 - _sym_w(symbol))
+        tag_s  = f"{symbol}{sym_pad} {entry.tag_key:<6}"
         content = entry.content
 
         markup = (
@@ -177,46 +189,28 @@ class TodoListContent(Static):
         if k in ("up", "j"):
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_todo_up()
-            except Exception:
-                pass
+            self.app.action_todo_up()
         elif k in ("down", "k"):
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_todo_down()
-            except Exception:
-                pass
+            self.app.action_todo_down()
         # Aktionen auf dem selektierten Todo
         elif k == "enter":
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_todo_activate()
-            except Exception:
-                pass
+            self.app.action_todo_activate()
         elif k == "f":
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_start_focus()
-            except Exception:
-                pass
+            self.app.action_start_focus()
         elif k == "d":
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_todo_done()
-            except Exception:
-                pass
+            self.app.action_todo_done()
         elif k == "x":
             event.prevent_default()
             event.stop()
-            try:
-                self.app.action_todo_delete()
-            except Exception:
-                pass
+            self.app.action_todo_delete()
         else:
             try:
                 super()._on_key(event)
@@ -325,7 +319,7 @@ class WorkApp(App):
             if widget_type:
                 return self.query_one(selector, widget_type)
             return self.query_one(selector)
-        except Exception:
+        except NoMatches:
             return None
 
     def _update(self, selector: str, widget_type, content: str) -> None:
@@ -496,7 +490,7 @@ class WorkApp(App):
                             try:
                                 d = date.fromisoformat(e.date)
                                 date_label = d.strftime("%a, %d. %b %Y")
-                            except Exception:
+                            except ValueError:
                                 date_label = e.date
                         lv.append(ListItem(Static(f"[dim]── {date_label} ──────────────────────[/]")))
                     lv.append(ListItem(LogEntryWidget(e, self.tags)))
@@ -504,7 +498,7 @@ class WorkApp(App):
         # Zeige Detail-Content des neuesten Eintrags (falls vorhanden)
         if entries:
             self._displayed_entry_id = entries[0].id
-            self._update("#log-entry-content", ContentView, escape(entries[0].content))
+            self._update("#log-entry-content", ContentView, _fmt_content(entries[0].content))
         else:
             self._displayed_entry_id = None
             self._update("#log-entry-content", ContentView, "[dim]  (kein Inhalt)[/]")
@@ -581,7 +575,7 @@ class WorkApp(App):
             else:
                 sess_label = ""
 
-            self.title = ('')
+            self.title = ('my daily journal')
 
             await asyncio.sleep(1)
 
@@ -636,7 +630,7 @@ class WorkApp(App):
     def action_view_latest(self) -> None:
         """Tastenkürzel: zeigt den Inhalt des neuesten Log-Eintrags an."""
         if self._log_entries:
-            self._update("#log-entry-content", ContentView, escape(self._log_entries[0].content))
+            self._update("#log-entry-content", ContentView, _fmt_content(self._log_entries[0].content))
         else:
             self._update("#log-entry-content", ContentView, "[dim]  (kein Inhalt)[/]")
 
@@ -660,7 +654,6 @@ class WorkApp(App):
                 self._update_headers()
                 self.notify("Eintrag gespeichert", timeout=2)
             except Exception as e:
-                import logging, traceback
                 logging.error(f"edit_entry save failed:\n{traceback.format_exc()}")
                 self.notify(f"Fehler beim Speichern: {e}", severity="error", timeout=4)
 
@@ -674,13 +667,13 @@ class WorkApp(App):
             return
         try:
             lew = item.query_one(LogEntryWidget)
-        except Exception:
+        except NoMatches:
             return
         entry = getattr(lew, "entry", None)
         if not entry:
             return
         self._displayed_entry_id = entry.id
-        self._update("#log-entry-content", ContentView, escape(entry.content))
+        self._update("#log-entry-content", ContentView, _fmt_content(entry.content))
 
     @on(ListView.Selected)
     def on_list_view_selected(self, message: ListView.Selected) -> None:
@@ -690,13 +683,13 @@ class WorkApp(App):
             return
         try:
             lew = item.query_one(LogEntryWidget)
-        except Exception:
+        except NoMatches:
             return
         entry = getattr(lew, "entry", None)
         if not entry:
             return
         self._displayed_entry_id = entry.id
-        self._update("#log-entry-content", ContentView, escape(entry.content))
+        self._update("#log-entry-content", ContentView, _fmt_content(entry.content))
 
     def action_prev_filter(self) -> None:
         if not self._filter_keys:
@@ -733,13 +726,11 @@ class WorkApp(App):
         """When a log list item is selected, show its full content in the detail pane."""
         try:
             li = event.item
-            widget = li.query_one(LogEntryWidget, expect_none=True)
-            if widget is None:
-                return
+            widget = li.query_one(LogEntryWidget)
             entry = widget.entry
             self._displayed_entry_id = entry.id
-            self._update("#log-entry-content", ContentView, escape(entry.content))
-        except Exception:
+            self._update("#log-entry-content", ContentView, _fmt_content(entry.content))
+        except (NoMatches, AttributeError):
             pass
 
     @on(Input.Submitted, "#log-text-input")
@@ -844,7 +835,6 @@ class WorkApp(App):
         try:
             self._do_start_focus()
         except Exception as e:
-            import logging, traceback
             logging.error(f"action_start_focus:\n{traceback.format_exc()}")
             self.notify(f"Focus-Fehler: {e}", severity="error", timeout=4)
 
@@ -886,8 +876,8 @@ class WorkApp(App):
         self._active_session_title = todo.title[:30]
         stats_todo = db.todo_get(self.db_path, todo.id)
         self._active_session_base_s = int(stats_todo.total_duration_s) if stats_todo else 0
-        # Fallback: FocusModal temporär deaktiviert, um App-Crash zu vermeiden.
-        self.notify(f"Focus gestartet: {todo.title[:40]}", timeout=2)
+        ctx_entries = db.log_get_day(self.db_path)
+        self._open_focus_modal(todo, session, ctx_entries)
 
     def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:
 
@@ -931,7 +921,6 @@ class WorkApp(App):
                     self._check_active_session()
                     self._load_all()
                 except Exception as e:
-                    import logging, traceback
                     logging.error(f"on_debrief:\n{traceback.format_exc()}")
                     self.notify(f"Fehler beim Speichern: {e}", severity="error", timeout=5)
                     self._active_session = None

@@ -30,7 +30,7 @@ def _setup_logging(log_path: Path) -> None:
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        prog="python -m tui_log",
+        prog="python work_app.py",
         description="Strukturiertes Tagesjournal fürs Terminal.",
     )
     parser.add_argument(

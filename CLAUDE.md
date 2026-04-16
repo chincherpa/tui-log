@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Run the app
-python -m tui_log
+python work_app.py
 
 # Use an alternative config
-python -m tui_log --config /path/to/config.toml
+python work_app.py --config /path/to/config.toml
 
 # Run tests (standalone runner, no pytest needed)
 python tests/test_db_utils.py

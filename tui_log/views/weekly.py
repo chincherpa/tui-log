@@ -29,10 +29,9 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Vertical, ScrollableContainer
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Label, Static
-from textual import on
 
 from .. import db_utils as db
 

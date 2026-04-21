@@ -402,10 +402,10 @@ def todo_add(
     with get_connection(db_path) as conn:
         cur = conn.execute(
             """
-            INSERT INTO todos (title, context, priority, mode, tags)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO todos (title, context, priority, mode)
+            VALUES (?, ?, ?, ?)
             """,
-            (title.strip(), context, priority, mode, json.dumps(tags or [])),
+            (title.strip(), context, priority, mode),
         )
         row_id = cur.lastrowid
     return todo_get(db_path, row_id)  # type: ignore[return-value]

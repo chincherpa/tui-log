@@ -5,3 +5,6 @@ __pycache__/
 .claude/
 *.log
 .vscode/
+build/
+dist/
+*.spec

@@ -114,12 +114,15 @@ class LogEntryWidget(Static):
         time_s = _fmt_time(entry.created_at)
         sym_pad = " " * (2 - _sym_w(symbol))
         tag_s  = f"{symbol}{sym_pad} {entry.tag_key:<6}"
-        content = entry.content
+        first_line = entry.content.split("\n", 1)[0]
+        has_body = "\n" in entry.content and entry.content.split("\n", 1)[1].strip()
+        content_indicator_start = "[dim #FFEE2E]" if has_body else ""
+        content_indicator_end = "[/] " if has_body else ""
 
         markup = (
             f"[dim]{time_s}[/]  "
             f"[bold {color}]{tag_s}[/]  "
-            f"{content}"
+            f"{content_indicator_start}{first_line}{content_indicator_end}"
         )
         super().__init__(markup, classes="log-entry")
         self.entry = entry
@@ -331,9 +334,11 @@ class WorkApp(App):
         Binding("e",         "edit_entry",      "Edit Entry",  show=False),
         Binding("enter",     "todo_activate",   "Aktivieren",   show=False),
         Binding("f",         "start_focus",     "Focus",        show=True),
+        Binding("m",         "toggle_content",  "Content",      show=True),
         Binding("n",         "next_filter",     "Filter →",     show=False),
         Binding("q",         "quit",            "Beenden",      show=True),
         Binding("r",         "refresh_all",     "Refresh",      show=False),
+        Binding("shift+d",   "delete_entry",    "Del Entry",    show=False),
         Binding("shift+p",   "git_push_db",     "Push DB",      show=True),
         Binding("shift+tab", "prev_tag",        "Tag",          show=False),
         Binding("space,n",   "focus_log_input", "Log",          show=True),
@@ -347,6 +352,7 @@ class WorkApp(App):
     # Reaktiver State
     _tag_idx:        reactive[int]  = reactive(0)
     _todos_visible:  reactive[bool] = reactive(True)
+    _content_visible: reactive[bool] = reactive(True)
     _active_session: reactive[db.FocusSession | None] = reactive(None)
     _clock_str:      reactive[str]  = reactive("")
     _log_filter:     reactive[str | None] = reactive(None)  # None = alle Tags
@@ -366,6 +372,7 @@ class WorkApp(App):
         self._todo_idx:    int  = 0           # ausgewähltes Todo
         self._active_session_title: str = ""  # gecachter Titel der laufenden Session
         self._active_session_base_s: int = 0  # kumulierte Dauer des Todo vor aktueller Session
+        self._focus_starting: bool = False    # Reentry-Guard gegen doppeltes F
         self._filter_keys: list[str | None] = []  # [None, "done", "start", ...] – wird in on_mount befüllt
         self._displayed_entry_id: int | None = None
 
@@ -741,6 +748,29 @@ class WorkApp(App):
 
         self.push_screen(TagSelectModal(self.tags, entry.tag_key), _on_result)
 
+    def action_delete_entry(self) -> None:
+        """Shift+D: aktuell angezeigten Log-Eintrag löschen – mit Bestätigung."""
+        if not self._displayed_entry_id:
+            self.notify("Kein Eintrag ausgewählt", timeout=2)
+            return
+        entry = db.log_get(self.db_path, self._displayed_entry_id)
+        if not entry:
+            self.notify("Eintrag nicht gefunden", severity="error", timeout=2)
+            return
+
+        preview = entry.content.split("\n", 1)[0][:50]
+
+        def _on_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            db.log_delete(self.db_path, entry.id)
+            self._displayed_entry_id = None
+            self._load_log()
+            self._update_headers()
+            self.notify("Eintrag gelöscht", timeout=2)
+
+        self.push_screen(_ConfirmModal(f"Eintrag löschen: '{preview}'?"), _on_confirm)
+
     @on(ListView.Highlighted)
     def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:
         """When the highlighted item changes (arrow keys), update the middle content panel."""
@@ -914,13 +944,22 @@ class WorkApp(App):
     # ── Focus-Session starten ─────────────────────────────────────────────────
 
     def action_start_focus(self) -> None:
+        logging.debug("action_start_focus: ENTER")
+        if self._focus_starting:
+            logging.error("action_start_focus: reentry blocked (focus-modal already opening)")
+            return
+        self._focus_starting = True
         try:
             self._do_start_focus()
+            logging.debug("action_start_focus: _do_start_focus returned")
         except Exception as e:
             logging.error(f"action_start_focus:\n{traceback.format_exc()}")
             self.notify(f"Focus-Fehler: {e}", severity="error", timeout=4)
+        finally:
+            self._focus_starting = False
 
     def _do_start_focus(self) -> None:
+        logging.debug(f"_do_start_focus: todos={len(self._todos) if self._todos else 0} idx={self._todo_idx}")
         # Selektiertes Todo verwenden; Fallback auf erstes offenes
         if self._todos:
             todo = self._todos[self._todo_idx]
@@ -953,13 +992,17 @@ class WorkApp(App):
             db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")
 
         # Neue Session starten
+        logging.debug(f"_do_start_focus: starting session for todo id={todo.id} title={todo.title[:30]!r}")
         session = db.session_start(self.db_path, todo.id)
+        logging.debug(f"_do_start_focus: session_start returned id={session.id}")
         self._active_session = session
         self._active_session_title = todo.title[:30]
         stats_todo = db.todo_get(self.db_path, todo.id)
         self._active_session_base_s = int(stats_todo.total_duration_s) if stats_todo else 0
         ctx_entries = db.log_get_day(self.db_path)
+        logging.debug(f"_do_start_focus: ctx_entries={len(ctx_entries)}")
         self._open_focus_modal(todo, session, ctx_entries)
+        logging.debug("_do_start_focus: _open_focus_modal returned")
 
     def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:
 
@@ -1019,7 +1062,65 @@ class WorkApp(App):
                 on_debrief,
             )
 
-        self.push_screen(FocusModal(todo, ctx_entries), on_focus_result)
+        logging.debug(f"_open_focus_modal: creating FocusModal (ctx={len(ctx_entries)})")
+
+        # DEBUG: Minimal-Modal zum Einkreisen des Mount-Problems
+        import os
+        if os.environ.get("TUILOG_TEST_MODAL"):
+            from .widgets.focus import _TestModal
+            self.push_screen(_TestModal(), lambda r: logging.debug(f"_TestModal dismissed: {r}"))
+            return
+        if os.environ.get("TUILOG_MINIMAL_MODAL"):
+            from textual.screen import ModalScreen as _MS
+            from textual.widgets import Label as _L
+            class _MinModal(_MS):
+                DEFAULT_CSS = "_MinModal { align: center middle; } #m { background: #222; border: solid red; padding: 2; width: 40; height: 5; }"
+                def compose(self):
+                    logging.debug("_MinModal.compose: ENTER")
+                    yield _L("HELLO MINIMAL MODAL", id="m")
+                def on_mount(self):
+                    logging.debug("_MinModal.on_mount: ENTER")
+            self.push_screen(_MinModal(), lambda r: logging.debug(f"_MinModal dismissed: {r}"))
+            return
+
+        try:
+            modal = FocusModal(todo, ctx_entries)
+        except Exception as e:
+            logging.error(f"FocusModal __init__ failed:\n{traceback.format_exc()}")
+            self.notify(f"Focus-Modal-Fehler: {e}", severity="error", timeout=5)
+            return
+        logging.debug("_open_focus_modal: pushing screen")
+        try:
+            self.push_screen(modal, on_focus_result)
+            logging.debug("_open_focus_modal: push_screen returned")
+        except Exception as e:
+            logging.error(f"push_screen(FocusModal) failed:\n{traceback.format_exc()}")
+            self.notify(f"Focus-Modal-Fehler: {e}", severity="error", timeout=5)
+            return
+
+        def _post_push_check() -> None:
+            try:
+                scr = self.screen
+                stack = [type(s).__name__ for s in self.screen_stack]
+                logging.debug(f"_post_push_check: active_screen={type(scr).__name__} stack={stack} modal_mounted={modal.is_mounted}")
+                if not modal.is_mounted:
+                    # Hard fail-safe: If FocusModal didn't mount, remove it from stack
+                    # so the app never gets stuck on an unresponsive screen.
+                    logging.error("_post_push_check: FocusModal failed to mount; recovering by popping screen")
+                    try:
+                        self.pop_screen()
+                    except Exception:
+                        logging.error(f"_post_push_check(pop_screen):\n{traceback.format_exc()}")
+                    self.notify(
+                        "Focus-Dialog konnte nicht angezeigt werden. Session läuft im Hintergrund weiter.",
+                        severity="warning",
+                        timeout=5,
+                    )
+            except Exception:
+                logging.error(f"_post_push_check:\n{traceback.format_exc()}")
+
+        self.set_timer(0.2, _post_push_check)
+        self.set_timer(1.5, _post_push_check)
 
     # ── Todo anlegen ─────────────────────────────────────────────────────────
 
@@ -1065,6 +1166,13 @@ class WorkApp(App):
                     w.focus()
                 except Exception:
                     pass
+
+    def action_toggle_content(self) -> None:
+        panel = self._q("#content-panel")
+        if panel is None:
+            return
+        self._content_visible = not self._content_visible
+        panel.display = self._content_visible
 
 
     # ── Refresh ──────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ def show_tag_select(
     tag_list = list(tags)
 
     def _close(key: str | None) -> None:
-        page.close(dlg)
+        page.pop_dialog()
         on_select(key)
 
     rows = []
@@ -51,4 +51,4 @@ def show_tag_select(
                           scroll="auto", tight=True),
         actions=[ft.TextButton("Abbrechen", on_click=lambda _e: _close(None))],
     )
-    page.open(dlg)
+    page.show_dialog(dlg)

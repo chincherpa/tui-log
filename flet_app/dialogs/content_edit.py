@@ -26,7 +26,7 @@ def show_content_edit(
     )
 
     def _close(value: str | None) -> None:
-        page.close(dlg)
+        page.pop_dialog()
         on_save(value)
 
     dlg = ft.AlertDialog(
@@ -40,4 +40,4 @@ def show_content_edit(
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)

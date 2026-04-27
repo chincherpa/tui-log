@@ -27,13 +27,13 @@ def _dispatch(e: ft.KeyboardEvent, app: "WorkApp") -> None:
 
     # Tab handling — context-aware
     if key == "Tab":
-        if in_input and shift:
-            app.action_prev_tag()
+        if in_input:
+            if shift:
+                app.action_prev_tag()
+            else:
+                app.action_next_tag()
             return
-        if not in_input:
-            app.action_cycle_panel(direction=-1 if shift else 1)
-            return
-        # In input + plain Tab: let Flet do default focus handling
+        app.action_cycle_panel(direction=-1 if shift else 1)
         return
 
     if in_input:

@@ -30,7 +30,7 @@ def show_new_todo(
     )
 
     def _close(payload: dict | None) -> None:
-        page.close(dlg)
+        page.pop_dialog()
         on_save(payload)
 
     def _save(_e=None) -> None:
@@ -55,4 +55,4 @@ def show_new_todo(
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)

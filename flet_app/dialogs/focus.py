@@ -82,7 +82,7 @@ def show_focus(
 
     def _close_with(payload: dict) -> None:
         state["stopped"] = True
-        page.close(dlg)
+        page.pop_dialog()
         on_done(payload)
 
     def _minimize(_e=None) -> None:
@@ -120,5 +120,5 @@ def show_focus(
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)
     threading.Thread(target=_tick, daemon=True).start()

@@ -78,7 +78,7 @@ def show_weekly(page: ft.Page, db_path: Path) -> None:
             _render()
 
     def _close(_e=None) -> None:
-        page.close(dlg)
+        page.pop_dialog()
 
     dlg = ft.AlertDialog(
         modal=True, bgcolor=theme.BG_PANEL,
@@ -91,5 +91,5 @@ def show_weekly(page: ft.Page, db_path: Path) -> None:
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)
     _render()

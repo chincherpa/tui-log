@@ -125,6 +125,7 @@ class WorkApp:
     def _on_entry_select(self, entry: db.LogEntry) -> None:
         self.state.displayed_entry_id = entry.id
         self._show_displayed_entry()
+        self.log_panel.render()
 
     def _on_input_focus_change(self, has_focus: bool) -> None:
         self.input_focused = has_focus

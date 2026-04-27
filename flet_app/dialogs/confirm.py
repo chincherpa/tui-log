@@ -11,7 +11,7 @@ from flet_app import theme
 
 def show_confirm(page: ft.Page, message: str, on_confirm: Callable[[bool], None]) -> None:
     def _close(result: bool) -> None:
-        page.close(dlg)
+        page.pop_dialog()
         on_confirm(result)
 
     dlg = ft.AlertDialog(
@@ -25,4 +25,4 @@ def show_confirm(page: ft.Page, message: str, on_confirm: Callable[[bool], None]
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)

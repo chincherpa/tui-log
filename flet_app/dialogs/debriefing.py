@@ -43,7 +43,7 @@ def show_debriefing(
     )
 
     def _close(payload: dict | None) -> None:
-        page.close(dlg)
+        page.pop_dialog()
         on_done(payload)
 
     def _save(_e=None) -> None:
@@ -60,4 +60,4 @@ def show_debriefing(
         ],
         actions_alignment="end",
     )
-    page.open(dlg)
+    page.show_dialog(dlg)

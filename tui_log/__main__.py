@@ -81,10 +81,10 @@ def main() -> None:
 
     db.project_upsert_from_config(cfg.db_path, cfg.projects)
 
-    # 3. App starten
-    from .work_app import WorkApp
+    # 3. App starten (Flet desktop)
+    from flet_app.main import run
     try:
-        WorkApp(cfg).run()
+        run(cfg)
     except Exception as e:
         logging.error(f"Unbehandelter Fehler:\n{traceback.format_exc()}")
         print(f"\n[Fehler] {e}\nDetails in: {log_path}")

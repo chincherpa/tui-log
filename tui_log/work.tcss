@@ -396,7 +396,7 @@ HandoverModal {
 /* ── Content-Panel (mittlere Spalte, fixe Breite) ───────────────── */
 
 #content-panel {
-    width: 48; /* fixe Spaltenbreite in Zeichen */
+    width: 50; /* fixe Spaltenbreite in Zeichen */
     border: solid #2A2A44;
     background: #0D0D1A;
     padding: 0 1;

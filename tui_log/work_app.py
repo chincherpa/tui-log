@@ -52,10 +52,15 @@ from .widgets.log_input import LogInput
 from .widgets.new_todo import NewTodoModal
 from .widgets.content_view import ContentEditModal, ContentView
 
+def xprint(s):
+    with open('log.txt', 'a') as f:
+        f.write(f"""{s}
+                """)
 
 # ── Tag-Hilfsfunktionen ───────────────────────────────────────────────────────
 
 def _sym_w(s: str) -> int:
+    xprint('def _sym_w(s: str) -> int:')
     """Visual terminal column width of a symbol (accounts for wide/emoji chars)."""
     w = 0
     for c in s:
@@ -68,6 +73,7 @@ def _sym_w(s: str) -> int:
 
 
 def _tag_markup(tag_key: str, tags) -> str:
+    xprint('def _tag_markup(tag_key: str, tags) -> str:')
     """Gibt Rich-Markup für ein Tag zurück."""
     tag = tags.get(tag_key)
     if tag:
@@ -76,6 +82,7 @@ def _tag_markup(tag_key: str, tags) -> str:
 
 
 def _fmt_time(iso_dt: str) -> str:
+    xprint('def _fmt_time(iso_dt: str) -> str:')
     """'2026-03-31 09:14:32' → '09:14'"""
     try:
         return iso_dt[11:16]
@@ -84,6 +91,7 @@ def _fmt_time(iso_dt: str) -> str:
 
 
 def _fmt_content(content: str) -> str:
+    xprint('def _fmt_content(content: str) -> str:')
     """Erste Zeile als Titel hervorheben, Rest als Body."""
     parts = content.split("\n", 1)
     title = f"[bold]{escape(parts[0])}[/bold]"
@@ -93,6 +101,7 @@ def _fmt_content(content: str) -> str:
 
 
 def _fmt_duration(seconds: int) -> str:
+    xprint('def _fmt_duration(seconds: int) -> str:')
     if seconds < 60:
         return f"{seconds}s"
     m = seconds // 60
@@ -108,6 +117,7 @@ class LogEntryWidget(Static):
     """Eine Zeile im Log."""
 
     def __init__(self, entry: db.LogEntry, tags) -> None:
+        xprint('def __init__(self, entry: db.LogEntry, tags) -> None:')
         tag = tags.get(entry.tag_key)
         symbol = tag.symbol if tag else "·"
         color  = tag.color  if tag else "#888888"
@@ -158,6 +168,7 @@ class TodoItemWidget(Static):
     """Zwei-Zeilen Todo-Eintrag."""
 
     def __init__(self, todo: db.Todo) -> None:
+        xprint('def __init__(self, todo: db.Todo) -> None:')
         icon     = STATUS_ICONS.get(todo.status, "○")
         p_color  = PRIORITY_COLORS.get(todo.priority, "#C8C8C8")
         title_s  = todo.title[:42]
@@ -184,6 +195,7 @@ class TodoListContent(Static):
     """
 
     def _on_key(self, event) -> None:
+        xprint('def _on_key(self, event) -> None:')
         k = event.key
         # Navigation
         if k in ("up", "j"):
@@ -243,19 +255,23 @@ class _ConfirmModal(ModalScreen[bool]):
     """
 
     def __init__(self, message: str) -> None:
+        xprint('def __init__(self, message: str) -> None:')
         super().__init__()
         self._message = message
 
     def compose(self) -> ComposeResult:
+        xprint('def compose(self) -> ComposeResult:')
         from textual.containers import Vertical
         with Vertical(id="confirm-dialog"):
             yield Label(self._message, id="confirm-text")
             yield Label("[y / Enter] Ja    [n / Esc] Nein", id="confirm-hint")
 
     def action_confirm(self) -> None:
+        xprint('def action_confirm(self) -> None:')
         self.dismiss(True)
 
     def action_cancel(self) -> None:
+        xprint('def action_cancel(self) -> None:')
         self.dismiss(False)
 
 
@@ -282,17 +298,20 @@ class TagSelectModal(ModalScreen):
     """
 
     def __init__(self, tags, current_key: str) -> None:
+        xprint('def __init__(self, tags, current_key: str) -> None:')
         super().__init__()
         self._tag_list = list(tags)
         self._current  = current_key
 
     def compose(self) -> ComposeResult:
+        xprint('def compose(self) -> ComposeResult:')
         with Vertical(id="tag-select-dialog"):
             yield Label("Tag wählen", id="tag-select-title")
             yield ListView(id="tag-list")
             yield Label("↑↓ Navigieren  Enter Übernehmen  Esc Abbrechen", id="tag-select-hint")
 
     def on_mount(self) -> None:
+        xprint('def on_mount(self) -> None:')
         lv = self.query_one("#tag-list", ListView)
         current_idx = 0
         for i, tag in enumerate(self._tag_list):
@@ -306,6 +325,7 @@ class TagSelectModal(ModalScreen):
 
     @on(ListView.Selected, "#tag-list")
     def _selected(self, event: ListView.Selected) -> None:
+        xprint('def _selected(self, event: ListView.Selected) -> None:')
         idx = event.list_view.index
         if idx is not None and 0 <= idx < len(self._tag_list):
             self.dismiss(self._tag_list[idx].key)
@@ -313,6 +333,7 @@ class TagSelectModal(ModalScreen):
             self.dismiss(None)
 
     def action_cancel(self) -> None:
+        xprint('def action_cancel(self) -> None:')
         self.dismiss(None)
 
 
@@ -352,6 +373,7 @@ class WorkApp(App):
     _log_filter:     reactive[str | None] = reactive(None)  # None = alle Tags
 
     def __init__(self, config: AppConfig) -> None:
+        xprint('def __init__(self, config: AppConfig) -> None:')
         super().__init__()
         self.cfg          = config
         self.db_path      = config.db_path
@@ -372,6 +394,7 @@ class WorkApp(App):
     # ── Sichere UI-Helfer ─────────────────────────────────────────────────────
 
     def _q(self, selector: str, widget_type=None):
+        xprint('def _q(self, selector: str, widget_type=None):')
         """query_one das nie wirft – gibt None zurück wenn Widget nicht gefunden."""
         try:
             if widget_type:
@@ -381,6 +404,7 @@ class WorkApp(App):
             return None
 
     def _update(self, selector: str, widget_type, content: str) -> None:
+        xprint('def _update(self, selector: str, widget_type, content: str) -> None:')
         """Widget-Inhalt sicher aktualisieren."""
         w = self._q(selector, widget_type)
         if w is not None:
@@ -390,6 +414,7 @@ class WorkApp(App):
                 pass
 
     def _add_class(self, selector: str, css_class: str) -> None:
+        xprint('def _add_class(self, selector: str, css_class: str) -> None:')
         w = self._q(selector)
         if w is not None:
             try:
@@ -398,6 +423,7 @@ class WorkApp(App):
                 pass
 
     def _remove_class(self, selector: str, css_class: str) -> None:
+        xprint('def _remove_class(self, selector: str, css_class: str) -> None:')
         w = self._q(selector)
         if w is not None:
             try:
@@ -408,6 +434,7 @@ class WorkApp(App):
     # ── Compose ──────────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
+        xprint('def compose(self) -> ComposeResult:')
         yield Header(show_clock=False)
 
         with Horizontal(id="main-split"):
@@ -445,6 +472,7 @@ class WorkApp(App):
     # ── Mount ─────────────────────────────────────────────────────────────────
 
     def on_mount(self) -> None:
+        xprint('def on_mount(self) -> None:')
         self._is_mounted = True
         self._load_all()
         self._update_tag_selector()
@@ -454,12 +482,14 @@ class WorkApp(App):
     # ── Daten laden ───────────────────────────────────────────────────────────
 
     def _load_all(self) -> None:
+        xprint('def _load_all(self) -> None:')
         self._load_log()
         self._load_todos()
         self._load_carry_over()
         self._update_headers()
 
     def _load_log(self) -> None:
+        xprint('def _load_log(self) -> None:')
         self._log_entries = db.log_get_all(self.db_path, mode="work")
         # Filter-Leiste: nur Tags mit Einträgen anzeigen
         used = db.log_used_tags(self.db_path, mode="work")
@@ -470,6 +500,7 @@ class WorkApp(App):
         self._render_log()
 
     def _load_todos(self) -> None:
+        xprint('def _load_todos(self) -> None:')
         # Aktuelle Todo-ID merken um den Index nach Reload zu erhalten
         current_id = self._todos[self._todo_idx].id if self._todos else None
         self._todos = db.todo_list(self.db_path, mode="work")
@@ -487,6 +518,7 @@ class WorkApp(App):
         self._render_todos()
 
     def _load_carry_over(self) -> None:
+        xprint('def _load_carry_over(self) -> None:')
         today = date.today().isoformat()
         self._carry_over = db.log_get_open_blocks(self.db_path, before_date=today)
         if self._carry_over:
@@ -497,6 +529,7 @@ class WorkApp(App):
             self._remove_class("#carry-over-bar", "visible")
 
     def _update_headers(self) -> None:
+        xprint('def _update_headers(self) -> None:')
         now = datetime.now()
         day_meta = db.day_get(self.db_path)
         focus = day_meta.morning_focus if day_meta else None
@@ -523,6 +556,7 @@ class WorkApp(App):
     # ── Render ────────────────────────────────────────────────────────────────
 
     def _render_log(self) -> None:
+        xprint('def _render_log(self) -> None:')
         entries = self._log_entries
         if self._log_filter is not None:
             entries = [e for e in entries if e.tag_key == self._log_filter]
@@ -570,6 +604,7 @@ class WorkApp(App):
                 pass
 
     def _render_todos(self) -> None:
+        xprint('def _render_todos(self) -> None:')
         if not self._todos:
             content = "[dim]  (keine Todos – [a] um eines anzulegen)[/]"
             self._update("#todo-list-content", Static, content)
@@ -611,6 +646,7 @@ class WorkApp(App):
 
     @work(exclusive=True, exit_on_error=False)
     async def _start_clock(self) -> None:
+        xprint('async def _start_clock(self) -> None:')
         tick = 0
         while self._is_mounted:
             now = datetime.now()
@@ -640,6 +676,7 @@ class WorkApp(App):
     # ── Aktive Session ────────────────────────────────────────────────────────
 
     def _check_active_session(self) -> None:
+        xprint('def _check_active_session(self) -> None:')
         sess = db.session_get_active(self.db_path)
         self._active_session = sess
         if sess:
@@ -655,21 +692,25 @@ class WorkApp(App):
     # ── Log-Eingabe ───────────────────────────────────────────────────────────
 
     def action_focus_log_input(self) -> None:
+        xprint('def action_focus_log_input(self) -> None:')
         w = self._q("#log-text-input", LogInput)
         if w is not None:
             w.focus()
 
     def action_next_tag(self) -> None:
+        xprint('def action_next_tag(self) -> None:')
         if self._work_tags:
             self._tag_idx = (self._tag_idx + 1) % len(self._work_tags)
             self._update_tag_selector()
 
     def action_prev_tag(self) -> None:
+        xprint('def action_prev_tag(self) -> None:')
         if self._work_tags:
             self._tag_idx = (self._tag_idx - 1) % len(self._work_tags)
             self._update_tag_selector()
 
     def _update_tag_selector(self) -> None:
+        xprint('def _update_tag_selector(self) -> None:')
         if not self._work_tags:
             return
         tag = self._work_tags[self._tag_idx]
@@ -678,6 +719,7 @@ class WorkApp(App):
     # ── Log-Filter ────────────────────────────────────────────────────────────
 
     def action_next_filter(self) -> None:
+        xprint('def action_next_filter(self) -> None:')
         if not self._filter_keys:
             return
         idx = self._filter_keys.index(self._log_filter) if self._log_filter in self._filter_keys else 0
@@ -686,6 +728,7 @@ class WorkApp(App):
         self._render_log()
 
     def action_view_latest(self) -> None:
+        xprint('def action_view_latest(self) -> None:')
         """Tastenkürzel: zeigt den Inhalt des neuesten Log-Eintrags an."""
         if self._log_entries:
             self._update("#log-entry-content", ContentView, _fmt_content(self._log_entries[0].content))
@@ -693,6 +736,7 @@ class WorkApp(App):
             self._update("#log-entry-content", ContentView, "[dim]  (kein Inhalt)[/]")
 
     def action_edit_entry(self) -> None:
+        xprint('def action_edit_entry(self) -> None:')
         """Öffnet einen Editor für den aktuell angezeigten Log-Eintrag."""
         if not self._displayed_entry_id:
             self.notify("Kein Eintrag ausgewählt", timeout=2)
@@ -704,6 +748,7 @@ class WorkApp(App):
             return
 
         def _on_result(result: str | None) -> None:
+            xprint('def _on_result(result: str | None) -> None:')
             if result is None:
                 return
             try:
@@ -718,6 +763,7 @@ class WorkApp(App):
         self.push_screen(ContentEditModal(entry.content), _on_result)
 
     def action_change_tag(self) -> None:
+        xprint('def action_change_tag(self) -> None:')
         """Tag des aktuell angezeigten Log-Eintrags ändern."""
         if not self._displayed_entry_id:
             self.notify("Kein Eintrag ausgewählt", timeout=2)
@@ -728,6 +774,7 @@ class WorkApp(App):
             return
 
         def _on_result(new_key: str | None) -> None:
+            xprint('def _on_result(new_key: str | None) -> None:')
             if new_key is None or new_key == entry.tag_key:
                 return
             try:
@@ -743,6 +790,7 @@ class WorkApp(App):
 
     @on(ListView.Highlighted)
     def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:
+        xprint('def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:')
         """When the highlighted item changes (arrow keys), update the middle content panel."""
         item = getattr(message, "item", None)
         if item is None:
@@ -759,6 +807,7 @@ class WorkApp(App):
 
     @on(ListView.Selected)
     def on_list_view_selected(self, message: ListView.Selected) -> None:
+        xprint('def on_list_view_selected(self, message: ListView.Selected) -> None:')
         """When an item is selected (Enter), also update content and focus content panel."""
         item = getattr(message, "item", None)
         if item is None:
@@ -774,6 +823,7 @@ class WorkApp(App):
         self._update("#log-entry-content", ContentView, _fmt_content(entry.content))
 
     def action_prev_filter(self) -> None:
+        xprint('def action_prev_filter(self) -> None:')
         if not self._filter_keys:
             return
         idx = self._filter_keys.index(self._log_filter) if self._log_filter in self._filter_keys else 0
@@ -782,6 +832,7 @@ class WorkApp(App):
         self._render_log()
 
     def _render_filter_bar(self) -> None:
+        xprint('def _render_filter_bar(self) -> None:')
         """Filter-Leiste: zeigt alle Tags als Chips, aktiver hervorgehoben."""
         if not self._filter_keys:
             return
@@ -805,6 +856,7 @@ class WorkApp(App):
 
     @on(ListView.Selected, "#log-list-view")
     def _on_log_selected(self, event) -> None:
+        xprint('def _on_log_selected(self, event) -> None:')
         """When a log list item is selected, show its full content in the detail pane."""
         try:
             li = event.item
@@ -817,6 +869,7 @@ class WorkApp(App):
 
     @on(Input.Submitted, "#log-text-input")
     def log_submitted(self, event: Input.Submitted) -> None:
+        xprint('def log_submitted(self, event: Input.Submitted) -> None:')
         text = event.value.strip()
         if not text or not self._work_tags:
             return
@@ -829,25 +882,30 @@ class WorkApp(App):
     # LogInput sendet TagNext/TagPrev statt Tab durchzulassen
     @on(LogInput.TagNext)
     def on_tag_next(self, _) -> None:
+        xprint('def on_tag_next(self, _) -> None:')
         self.action_next_tag()
 
     @on(LogInput.TagPrev)
     def on_tag_prev(self, _) -> None:
+        xprint('def on_tag_prev(self, _) -> None:')
         self.action_prev_tag()
 
     # ── Todo-Navigation ──────────────────────────────────────────────────────
 
     def action_todo_up(self) -> None:
+        xprint('def action_todo_up(self) -> None:')
         if self._todos and self._todo_idx > 0:
             self._todo_idx -= 1
             self._render_todos()
 
     def action_todo_down(self) -> None:
+        xprint('def action_todo_down(self) -> None:')
         if self._todos and self._todo_idx < len(self._todos) - 1:
             self._todo_idx += 1
             self._render_todos()
 
     def action_todo_activate(self) -> None:
+        xprint('def action_todo_activate(self) -> None:')
         """Enter: selektiertes Todo auf 'active' setzen ohne Session."""
         if not self._todos:
             return
@@ -862,6 +920,7 @@ class WorkApp(App):
             self.notify(f"‖  {todo.title[:40]} pausiert", timeout=2)
 
     def action_todo_done(self) -> None:
+        xprint('def action_todo_done(self) -> None:')
         """d: selektiertes Todo als erledigt markieren."""
         if not self._todos:
             return
@@ -885,6 +944,7 @@ class WorkApp(App):
         self.notify(f"✓  {todo.title[:40]}", timeout=2)
 
     def action_todo_delete(self) -> None:
+        xprint('def action_todo_delete(self) -> None:')
         """x: selektiertes Todo canceln – mit Bestätigung."""
         if not self._todos:
             return
@@ -893,6 +953,7 @@ class WorkApp(App):
             return
 
         def on_confirm(confirmed: bool) -> None:
+            xprint('def on_confirm(confirmed: bool) -> None:')
             if not confirmed:
                 return
             # Aktive Focus-Session für dieses Todo beenden
@@ -913,7 +974,8 @@ class WorkApp(App):
 
     # ── Focus-Session starten ─────────────────────────────────────────────────
 
-    def action_start_focus(self) -> None:
+    async def action_start_focus(self) -> None:
+        xprint('def action_start_focus(self) -> None:')
         try:
             self._do_start_focus()
         except Exception as e:
@@ -921,55 +983,95 @@ class WorkApp(App):
             self.notify(f"Focus-Fehler: {e}", severity="error", timeout=4)
 
     def _do_start_focus(self) -> None:
+        xprint('def _do_start_focus(self) -> None:')
         # Selektiertes Todo verwenden; Fallback auf erstes offenes
+        xprint('# Selektiertes Todo verwenden; Fallback auf erstes offenes')
         if self._todos:
+            xprint('if self._todos:')
             todo = self._todos[self._todo_idx]
+            xprint('todo = self._todos[self._todo_idx]')
             if todo.status not in ("open", "paused", "active"):
+                xprint('if todo.status not in ("open", "paused", "active"):')
                 candidates = [t for t in self._todos if t.status in ("open", "paused", "active")]
+                xprint('candidates = [t for t in self._todos if t.status in ("open", "paused", "active")]')
                 if not candidates:
+                    xprint('if not candidates:')
                     self.notify("Keine offenen Todos.", severity="warning")
+                    xprint('self.notify("Keine offenen Todos.", severity="warning")')
                     return
+
                 todo = candidates[0]
+                xprint('todo = candidates[0]')
         else:
+            xprint('else:')
             self.notify("Keine offenen Todos.", severity="warning")
+            xprint('self.notify("Keine offenen Todos.", severity="warning")')
             return
 
         # Aktive Session ggf. auf anderes Todo umschalten
+        xprint('# Aktive Session ggf. auf anderes Todo umschalten')
         existing_sess = db.session_get_active(self.db_path)
+        xprint('existing_sess = db.session_get_active(self.db_path)')
         if existing_sess:
+            xprint('if existing_sess:')
             if existing_sess.todo_id == todo.id:
+                xprint('if existing_sess.todo_id == todo.id:')
                 # Toggle aus: gleiche Todo-Auswahl + [f] beendet aktive Session
+                xprint('# Toggle aus: gleiche Todo-Auswahl + [f] beendet aktive Session')
                 # und persistiert die Laufzeit.
+                xprint('# und persistiert die Laufzeit.')
                 db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")
+                xprint('db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")')
                 self._active_session = None
+                xprint('self._active_session = None')
                 self._active_session_title = ""
+                xprint('self._active_session_title = ""')
                 self._active_session_base_s = 0
+                xprint('self._active_session_base_s = 0')
                 self._check_active_session()
+                xprint('self._check_active_session()')
                 self._load_todos()
+                xprint('self._load_todos()')
                 self._update_headers()
+                xprint('self._update_headers()')
                 self.notify(f"Focus beendet: {todo.title[:40]}", timeout=2)
+                xprint('self.notify(f"Focus beendet: {todo.title[:40]}", timeout=2)')
                 return
+
             # Bisherige Session sauber als "open" beenden und auf neues Todo wechseln.
+            xprint('# Bisherige Session sauber als "open" beenden und auf neues Todo wechseln.')
             db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")
+            xprint('db.session_end(self.db_path, existing_sess.id, outcome="open", log_entry="")')
 
         # Neue Session starten
+        xprint('# Neue Session starten')
         session = db.session_start(self.db_path, todo.id)
+        xprint('session = db.session_start(self.db_path, todo.id)')
         self._active_session = session
+        xprint('self._active_session = session')
         self._active_session_title = todo.title[:30]
+        xprint('self._active_session_title = todo.title[:30]')
         stats_todo = db.todo_get(self.db_path, todo.id)
+        xprint('stats_todo = db.todo_get(self.db_path, todo.id)')
         self._active_session_base_s = int(stats_todo.total_duration_s) if stats_todo else 0
+        xprint('self._active_session_base_s = int(stats_todo.total_duration_s) if stats_todo else 0')
         ctx_entries = db.log_get_day(self.db_path)
+        xprint('ctx_entries = db.log_get_day(self.db_path)')
         self._open_focus_modal(todo, session, ctx_entries)
+        xprint('end')
 
     def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:
+        xprint('def _open_focus_modal(self, todo, session, ctx_entries: list) -> None:')
 
         def on_focus_result(result: dict | None) -> None:
+            xprint('def on_focus_result(result: dict | None) -> None:')
             if result is None:
                 # Minimiert – Session läuft weiter
                 return
 
             # Debriefing zeigen
             def on_debrief(debrief: dict | None) -> None:
+                xprint('def on_debrief(debrief: dict | None) -> None:')
                 try:
                     if debrief is None:
                         # Ohne Log-Eintrag beenden
@@ -1024,10 +1126,12 @@ class WorkApp(App):
     # ── Todo anlegen ─────────────────────────────────────────────────────────
 
     def action_add_todo(self) -> None:
+        xprint('def action_add_todo(self) -> None:')
         """NewTodoModal öffnen – optionaler Prefill aus dem Log-Input."""
         prefill = (self._q("#log-text-input", LogInput) or type("", (), {"value": ""})()).value.strip()
 
         def on_result(result: dict | None) -> None:
+            xprint('def on_result(result: dict | None) -> None:')
             if not result:
                 return
             db.todo_add(
@@ -1051,6 +1155,7 @@ class WorkApp(App):
     # ── Todos toggle ─────────────────────────────────────────────────────────
 
     def action_toggle_todos(self) -> None:
+        xprint('def action_toggle_todos(self) -> None:')
         panel = self._q("#todo-panel")
         if panel is None:
             return
@@ -1070,20 +1175,24 @@ class WorkApp(App):
     # ── Refresh ──────────────────────────────────────────────────────────────
 
     def action_refresh_all(self) -> None:
+        xprint('def action_refresh_all(self) -> None:')
         self._load_all()
         self._check_active_session()
         self.notify("Aktualisiert.", timeout=1)
 
     def action_git_push_db(self) -> None:
+        xprint('def action_git_push_db(self) -> None:')
         self._run_git_push()
 
     @work
     async def _run_git_push(self) -> None:
+        xprint('async def _run_git_push(self) -> None:')
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         cwd = str(self.db_path.parent)
         db_name = self.db_path.name
 
         async def run(*args: str) -> tuple[int, str]:
+            xprint('async def run(*args: str) -> tuple[int, str]:')
             proc = await asyncio.create_subprocess_exec(
                 *args, cwd=cwd,
                 stdout=asyncio.subprocess.PIPE,
@@ -1115,5 +1224,6 @@ class WorkApp(App):
 # ── Entry Point ───────────────────────────────────────────────────────────────
 
 def run_work_mode(config: AppConfig) -> None:
+    xprint('def run_work_mode(config: AppConfig) -> None:')
     app = WorkApp(config)
     app.run()

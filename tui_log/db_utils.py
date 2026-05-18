@@ -20,6 +20,8 @@ from typing import Literal
 
 from .schema import get_connection
 
+from textual import work
+
 # ── Typen ─────────────────────────────────────────────────────────────────────
 
 Status   = Literal["open", "active", "paused", "done", "dropped", "cancelled"]
@@ -469,6 +471,7 @@ def todo_list(
         rows = conn.execute(sql, params).fetchall()
     return [_row_to_todo(r) for r in rows]
 
+@work(thread=True)
 def todo_set_status(db_path: Path, todo_id: int, status: Status) -> Todo | None:
     done_at = _now() if status == "done" else None
     with get_connection(db_path) as conn:

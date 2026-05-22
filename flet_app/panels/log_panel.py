@@ -36,7 +36,7 @@ class LogPanel(ft.Container):
 
         self.tag_chip = ft.Container(
             content=ft.Text("", color=theme.TEXT_PRIMARY, size=12, weight="bold"),
-            padding=ft.padding.symmetric(horizontal=8, vertical=6),
+            padding=ft.Padding.symmetric(horizontal=8, vertical=6),
             bgcolor=theme.BG_PANEL,
             border_radius=4,
         )
@@ -61,7 +61,7 @@ class LogPanel(ft.Container):
             ),
             padding=8,
             bgcolor=theme.BG_PANEL,
-            border=ft.border.all(1, theme.BORDER),
+            border=ft.Border.all(1, theme.BORDER),
             border_radius=6,
             expand=True,
         )
@@ -101,7 +101,7 @@ class LogPanel(ft.Container):
                 ft.Container(
                     content=ft.Text(label, color="#000000" if active else color, size=11, weight="bold"),
                     bgcolor=color if active else None,
-                    padding=ft.padding.symmetric(horizontal=8, vertical=2),
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=2),
                     border_radius=10,
                 )
             )

@@ -23,7 +23,7 @@ class ContentPanel(ft.Container):
             content=ft.Column([self.title, self.scroll], spacing=6, expand=True),
             padding=12,
             bgcolor=theme.BG_PANEL,
-            border=ft.border.all(1, theme.BORDER),
+            border=ft.Border.all(1, theme.BORDER),
             border_radius=6,
             expand=True,
         )

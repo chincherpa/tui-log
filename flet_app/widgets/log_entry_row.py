@@ -55,7 +55,7 @@ def build_log_entry_row(
 
     return ft.Container(
         content=row,
-        padding=ft.padding.symmetric(horizontal=8, vertical=4),
+        padding=ft.Padding.symmetric(horizontal=8, vertical=4),
         bgcolor=theme.BG_SELECTED if selected else None,
         border_radius=4,
         on_click=lambda _e: on_click(entry),
@@ -65,5 +65,5 @@ def build_log_entry_row(
 def build_date_separator(label: str) -> ft.Control:
     return ft.Container(
         content=ft.Text(f"── {label} ──", color=theme.TEXT_DIM, size=11),
-        padding=ft.padding.symmetric(horizontal=8, vertical=2),
+        padding=ft.Padding.symmetric(horizontal=8, vertical=2),
     )

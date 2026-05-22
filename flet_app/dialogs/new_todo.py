@@ -37,9 +37,9 @@ def show_new_todo(
                     content=ft.Text(PRIORITY_DISPLAY[p],
                                     color="#000000" if active else color,
                                     weight="bold", size=13),
-                    padding=ft.padding.symmetric(horizontal=12, vertical=6),
+                    padding=ft.Padding.symmetric(horizontal=12, vertical=6),
                     bgcolor=color if active else theme.BG_SELECTED,
-                    border=ft.border.all(1, color),
+                    border=ft.Border.all(1, color),
                     border_radius=6,
                     on_click=lambda _e, k=p: _pick(k),
                 )

@@ -36,7 +36,7 @@ def show_tag_select(
                     ],
                     spacing=4,
                 ),
-                padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                padding=ft.Padding.symmetric(horizontal=8, vertical=6),
                 bgcolor=theme.BG_SELECTED if is_current else None,
                 border_radius=4,
                 on_click=lambda _e, k=tag.key: _close(k),

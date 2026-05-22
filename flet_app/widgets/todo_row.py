@@ -59,9 +59,9 @@ def build_todo_row(
 
     return ft.Container(
         content=ft.Column([line1, line2], spacing=2),
-        padding=ft.padding.symmetric(horizontal=10, vertical=6),
+        padding=ft.Padding.symmetric(horizontal=10, vertical=6),
         bgcolor=theme.BG_SELECTED if selected else None,
-        border=ft.border.only(left=ft.BorderSide(3, theme.ACCENT_BLUE)) if selected else None,
+        border=ft.Border.only(left=ft.BorderSide(3, theme.ACCENT_BLUE)) if selected else None,
         border_radius=4,
         on_click=lambda _e: on_click(todo),
     )

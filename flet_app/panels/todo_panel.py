@@ -21,7 +21,7 @@ class TodoPanel(ft.Container):
         self.title = ft.Text("", color=theme.TEXT_SECONDARY, size=12, weight="bold")
         self.session_bar = ft.Container(
             content=ft.Text("", color=theme.STATUS_COLORS["active"], size=12, weight="bold"),
-            padding=ft.padding.symmetric(horizontal=8, vertical=6),
+            padding=ft.Padding.symmetric(horizontal=8, vertical=6),
             bgcolor=theme.BG_SELECTED,
             border_radius=4,
             visible=False,
@@ -32,7 +32,7 @@ class TodoPanel(ft.Container):
             content=ft.Column([self.title, self.session_bar, self.list_view], spacing=6, expand=True),
             padding=8,
             bgcolor=theme.BG_PANEL,
-            border=ft.border.all(1, theme.BORDER),
+            border=ft.Border.all(1, theme.BORDER),
             border_radius=6,
             expand=True,
         )
@@ -69,7 +69,7 @@ class TodoPanel(ft.Container):
                 self.list_view.controls.append(
                     ft.Container(
                         content=ft.Text("── done ──", color=theme.TEXT_DIM, size=11),
-                        padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                        padding=ft.Padding.symmetric(horizontal=8, vertical=4),
                     )
                 )
                 done_divider_emitted = True
@@ -124,5 +124,5 @@ class TodoPanel(ft.Container):
             content=ft.Column(children, spacing=2, tight=True),
             padding=ft.padding.only(left=24, right=12, top=4, bottom=6),
             bgcolor=theme.BG_PANEL,
-            border=ft.border.only(left=ft.BorderSide(2, theme.BORDER)),
+            border=ft.Border.only(left=ft.BorderSide(2, theme.BORDER)),
         )

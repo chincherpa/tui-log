@@ -251,7 +251,7 @@ class WorkApp:
         for name, panel in (("log", self.log_panel),
                             ("content", self.content_panel),
                             ("todo", self.todo_panel)):
-            panel.border = ft.border.all(
+            panel.border = ft.Border.all(
                 2 if name == self.active_panel else 1,
                 theme.BORDER_ACTIVE if name == self.active_panel else theme.BORDER,
             )

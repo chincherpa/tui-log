@@ -47,6 +47,7 @@ class LogPanel(ft.Container):
             text_size=13,
             content_padding=8,
             expand=True,
+            can_request_focus=False,
             on_submit=self._handle_submit,
             on_focus=lambda _e: self.on_input_focus_change and self.on_input_focus_change(True),
             on_blur=lambda _e: self.on_input_focus_change and self.on_input_focus_change(False),

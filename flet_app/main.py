@@ -166,6 +166,8 @@ class WorkApp:
         self.input_focused = has_focus
         if has_focus:
             self.active_panel = "log"
+        else:
+            self.log_panel.input.can_request_focus = False
 
     def _on_todo_select(self, todo: db.Todo) -> None:
         ids = [t.id for t in self.state.todos]
@@ -186,6 +188,7 @@ class WorkApp:
 
     def action_focus_log_input(self) -> None:
         self.active_panel = "log"
+        self.log_panel.input.can_request_focus = True
         self._fire(self.log_panel.input.focus)
         self._highlight_active_panel()
 

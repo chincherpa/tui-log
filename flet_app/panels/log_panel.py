@@ -67,7 +67,11 @@ class LogPanel(ft.Container):
         )
 
     def focus_input(self) -> None:
-        self.input.focus()
+        """Deprecated: focus() is async in Flet 0.84. Use WorkApp._fire(panel.input.focus)."""
+        try:
+            self.input.focus()
+        except Exception:
+            pass
 
     def render(self) -> None:
         self._render_title()

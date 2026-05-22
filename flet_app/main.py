@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import traceback
@@ -51,8 +52,10 @@ class WorkApp:
         self.content_panel = ContentPanel()
         self.todo_panel = TodoPanel(self.state, on_todo_select=self._on_todo_select)
 
-        self.last_action_was_filter = False
         self.input_focused = False
+        self.dialog_open = False
+        self.dialog_escape_handler = None
+        self.active_panel = "log"
         self._panel_idx = 0
         self._stop_clock = False
 
@@ -69,7 +72,7 @@ class WorkApp:
         self.page.window.height = 900
         self.page.window.min_width = 900
         self.page.window.min_height = 600
-        self.page.window.center()
+        self._fire(self.page.window.center)
 
         self.page.add(
             ft.Row(
@@ -80,8 +83,39 @@ class WorkApp:
         self._refresh_all_panels()
         self._show_displayed_entry()
 
+        self._wrap_dialog_tracking()
         keybindings.attach(self.page, self)
         self._start_clock()
+        self._highlight_active_panel()
+
+    def _fire(self, handler, *args, **kwargs) -> None:
+        """Schedule a coroutine-returning callable on Flet's event loop."""
+        try:
+            self.page.run_task(handler, *args, **kwargs)
+        except Exception:
+            try:
+                coro = handler(*args, **kwargs)
+                if coro is not None:
+                    import asyncio
+                    loop = asyncio.get_event_loop()
+                    loop.create_task(coro)
+            except Exception:
+                pass
+
+    def _wrap_dialog_tracking(self) -> None:
+        _orig_show = self.page.show_dialog
+        _orig_pop = self.page.pop_dialog
+
+        def _show(dlg, *a, **kw):
+            self.dialog_open = True
+            return _orig_show(dlg, *a, **kw)
+
+        def _pop(*a, **kw):
+            self.dialog_open = False
+            return _orig_pop(*a, **kw)
+
+        self.page.show_dialog = _show
+        self.page.pop_dialog = _pop
 
     # ── refresh ───────────────────────────────────────────────────────────
 
@@ -99,41 +133,45 @@ class WorkApp:
     # ── live clock for active session ─────────────────────────────────────
 
     def _start_clock(self) -> None:
-        def _tick() -> None:
+        async def _tick() -> None:
             while not self._stop_clock:
-                if self.state.active_session:
-                    started = datetime.fromisoformat(self.state.active_session.started_at)
-                    elapsed = self.state.active_session_base_s + int((datetime.now() - started).total_seconds())
-                    h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
-                    timer = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
-                    label = f"  ▶  {self.state.active_session_title}  ·  {timer}"
-                    try:
+                try:
+                    if self.state.active_session:
+                        started = datetime.fromisoformat(self.state.active_session.started_at)
+                        elapsed = self.state.active_session_base_s + int((datetime.now() - started).total_seconds())
+                        h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
+                        timer = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+                        label = f"  ▶  {self.state.active_session_title}  ·  {timer}"
                         self.todo_panel.update_session_timer(label)
-                    except Exception:
-                        break
-                else:
-                    try:
+                    else:
                         self.todo_panel.update_session_timer(None)
-                    except Exception:
-                        break
-                threading.Event().wait(1)
+                except Exception:
+                    break
+                await asyncio.sleep(1)
 
-        threading.Thread(target=_tick, daemon=True).start()
+        try:
+            self.page.run_task(_tick)
+        except Exception:
+            pass
 
     # ── selection callbacks ───────────────────────────────────────────────
 
     def _on_entry_select(self, entry: db.LogEntry) -> None:
         self.state.displayed_entry_id = entry.id
+        self.active_panel = "log"
         self._show_displayed_entry()
         self.log_panel.render()
 
     def _on_input_focus_change(self, has_focus: bool) -> None:
         self.input_focused = has_focus
+        if has_focus:
+            self.active_panel = "log"
 
     def _on_todo_select(self, todo: db.Todo) -> None:
         ids = [t.id for t in self.state.todos]
         if todo.id in ids:
             self.state.todo_idx = ids.index(todo.id)
+            self.active_panel = "todo"
             self.todo_panel.render()
 
     def _on_log_submit(self, text: str) -> None:
@@ -147,8 +185,24 @@ class WorkApp:
     # ── actions ───────────────────────────────────────────────────────────
 
     def action_focus_log_input(self) -> None:
-        self.log_panel.focus_input()
-        self.last_action_was_filter = False
+        self.active_panel = "log"
+        self._fire(self.log_panel.input.focus)
+        self._highlight_active_panel()
+
+    def action_quit(self) -> None:
+        self._fire(self.page.window.close)
+        self._fire(self.page.window.destroy)
+
+    def action_arrow(self, direction: int) -> None:
+        if self.active_panel == "todo":
+            if direction < 0:
+                self.action_todo_up()
+            else:
+                self.action_todo_down()
+        else:
+            self.state.select_entry_relative(direction)
+            self._show_displayed_entry()
+            self.log_panel.render()
 
     def action_next_tag(self) -> None:
         self.state.cycle_tag(1)
@@ -161,12 +215,10 @@ class WorkApp:
     def action_next_filter(self) -> None:
         self.state.cycle_filter(1)
         self.log_panel.render()
-        self.last_action_was_filter = True
 
     def action_prev_filter(self) -> None:
         self.state.cycle_filter(-1)
         self.log_panel.render()
-        self.last_action_was_filter = True
 
     def action_view_latest(self) -> None:
         if self.state.log_entries:
@@ -187,10 +239,26 @@ class WorkApp:
         self.content_panel.update()
 
     def action_cycle_panel(self, direction: int = 1) -> None:
-        self._panel_idx = (self._panel_idx + direction) % len(PANEL_ORDER)
-        target = PANEL_ORDER[self._panel_idx]
-        if target == "log":
-            self.log_panel.focus_input()
+        idx = PANEL_ORDER.index(self.active_panel) if self.active_panel in PANEL_ORDER else 0
+        idx = (idx + direction) % len(PANEL_ORDER)
+        self.active_panel = PANEL_ORDER[idx]
+        # if self.active_panel == "log":
+        #     self._fire(self.log_panel.input.focus)
+        self._highlight_active_panel()
+        # show_toast(self.page, f"Panel: {self.active_panel}", duration_ms=900)
+
+    def _highlight_active_panel(self) -> None:
+        for name, panel in (("log", self.log_panel),
+                            ("content", self.content_panel),
+                            ("todo", self.todo_panel)):
+            panel.border = ft.border.all(
+                2 if name == self.active_panel else 1,
+                theme.BORDER_ACTIVE if name == self.active_panel else theme.BORDER,
+            )
+            try:
+                panel.update()
+            except Exception:
+                pass
 
     def action_todo_up(self) -> None:
         if self.state.todos and self.state.todo_idx > 0:
@@ -348,14 +416,14 @@ class WorkApp:
             todo = candidates[0]
 
         existing = db.session_get_active(self.state.db_path)
+        if existing and existing.todo_id == todo.id:
+            # Pressing F on already-focused todo → end with debriefing
+            started = datetime.fromisoformat(existing.started_at)
+            elapsed_s = int((datetime.now() - started).total_seconds())
+            self._finalize_session(existing.id, todo, elapsed_s, suggested="open", notes=[])
+            return
+
         if existing:
-            if existing.todo_id == todo.id:
-                db.session_end(self.state.db_path, existing.id, outcome="open", log_entry="")
-                self.state.check_active_session()
-                self.state.load_todos()
-                self._refresh_all_panels()
-                show_toast(self.page, f"Focus beendet: {todo.title[:40]}")
-                return
             db.session_end(self.state.db_path, existing.id, outcome="open", log_entry="")
 
         session = db.session_start(self.state.db_path, todo.id)
@@ -363,33 +431,45 @@ class WorkApp:
         self._refresh_all_panels()
 
         def _on_focus_done(payload: dict) -> None:
+            self.dialog_escape_handler = None
             if payload.get("action") == "minimize":
                 return
+            self._finalize_session(
+                session.id, todo, payload["elapsed_s"],
+                suggested=payload["outcome"],
+                notes=payload.get("notes", []),
+            )
 
-            def _on_debrief(debrief: dict | None) -> None:
-                try:
-                    if debrief is None:
-                        db.session_end(self.state.db_path, session.id,
-                                       outcome=payload["outcome"], log_entry="")
-                    else:
-                        db.session_end(self.state.db_path, session.id,
-                                       outcome=debrief["outcome"], log_entry=debrief["log_entry"])
-                        if debrief["log_entry"]:
-                            tag_key = "done" if debrief["outcome"] == "solved" else "block"
-                            db.log_add(self.state.db_path, tag_key=tag_key,
-                                       content=debrief["log_entry"], mode="work", todo_id=todo.id)
-                        for note in payload.get("notes", []):
-                            db.note_add(self.state.db_path, todo.id, note, session_id=session.id)
-                    self.state.check_active_session()
-                    self.state.load_all()
-                    self._refresh_all_panels()
-                except Exception as e:
-                    logging.error(f"on_debrief failed:\n{traceback.format_exc()}")
-                    show_toast(self.page, f"Fehler: {e}", severity="error", duration_ms=4000)
+        show_focus(self.page, todo, session.started_at, _on_focus_done, app=self)
 
-            show_debriefing(self.page, todo.title, payload["elapsed_s"], payload["outcome"], _on_debrief)
+    def _finalize_session(self, session_id: int, todo: db.Todo, elapsed_s: int,
+                          *, suggested: str, notes: list[str]) -> None:
+        def _on_debrief(debrief: dict | None) -> None:
+            try:
+                if debrief is None:
+                    db.session_end(self.state.db_path, session_id,
+                                   outcome=suggested, log_entry="")
+                else:
+                    db.session_end(self.state.db_path, session_id,
+                                   outcome=debrief["outcome"], log_entry=debrief["log_entry"])
+                    if debrief["log_entry"]:
+                        tag_key = {
+                            "solved":  "done",
+                            "open":    "wait",
+                            "blocked": "block",
+                        }.get(debrief["outcome"], "wait")
+                        db.log_add(self.state.db_path, tag_key=tag_key,
+                                   content=debrief["log_entry"], mode="work", todo_id=todo.id)
+                for note in notes:
+                    db.note_add(self.state.db_path, todo.id, note, session_id=session_id)
+                self.state.check_active_session()
+                self.state.load_all()
+                self._refresh_all_panels()
+            except Exception as e:
+                logging.error(f"on_debrief failed:\n{traceback.format_exc()}")
+                show_toast(self.page, f"Fehler: {e}", severity="error", duration_ms=4000)
 
-        show_focus(self.page, todo, session.started_at, _on_focus_done)
+        show_debriefing(self.page, todo.title, elapsed_s, suggested, _on_debrief)
 
 
 # ── entry point ───────────────────────────────────────────────────────────

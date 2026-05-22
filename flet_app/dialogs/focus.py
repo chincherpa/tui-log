@@ -8,6 +8,7 @@ Returns via callback:
 
 from __future__ import annotations
 
+import asyncio
 import threading
 from datetime import datetime
 from typing import Callable
@@ -27,6 +28,8 @@ def show_focus(
     todo: db.Todo,
     started_at: str,
     on_done: Callable[[dict], None],
+    *,
+    app=None,
 ) -> None:
     state = {
         "preset_idx": 1,
@@ -70,18 +73,22 @@ def show_focus(
             return f"{h:02d}:{m:02d}:{s:02d}"
         return f"{m:02d}:{s:02d}"
 
-    def _tick() -> None:
+    async def _tick() -> None:
+        # Brief delay so the dialog is mounted before first update
+        await asyncio.sleep(0.2)
         while not state["stopped"]:
             elapsed = _elapsed_s()
             timer_label.value = _fmt(elapsed)
             try:
-                page.update()
+                timer_label.update()
             except Exception:
                 break
-            threading.Event().wait(1)
+            await asyncio.sleep(1)
 
     def _close_with(payload: dict) -> None:
         state["stopped"] = True
+        if app is not None:
+            app.dialog_escape_handler = None
         page.pop_dialog()
         on_done(payload)
 
@@ -120,5 +127,13 @@ def show_focus(
         ],
         actions_alignment="end",
     )
+    if app is not None:
+        app.dialog_escape_handler = lambda: _minimize()
     page.show_dialog(dlg)
-    threading.Thread(target=_tick, daemon=True).start()
+    try:
+        page.run_task(_tick)
+    except Exception:
+        # Fallback: schedule via threading (may still not update from thread on Flet 0.84)
+        def _thread_target() -> None:
+            asyncio.run(_tick())
+        threading.Thread(target=_thread_target, daemon=True).start()

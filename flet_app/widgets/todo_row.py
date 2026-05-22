@@ -21,6 +21,9 @@ def _fmt_duration(seconds: int) -> str:
     return f"{h}h{m % 60:02d}"
 
 
+PRIORITY_SYMBOLS = {"high": "▲", "normal": "●", "low": "▼"}
+
+
 def build_todo_row(
     todo: db.Todo,
     *,
@@ -34,23 +37,24 @@ def build_todo_row(
 
     ctx = (todo.context or "")[:32]
     dur = _fmt_duration(todo.total_duration_s) if todo.total_duration_s else ""
-    sess = f"{todo.total_sessions}×" if todo.total_sessions else ""
-    stats = f"{sess} {dur}".strip()
+    # sess = f"{todo.total_sessions}×" if todo.total_sessions else ""
+    stats = f"{dur}".strip()
 
-    line1 = ft.Row(
-        [
-            ft.Text(icon, color=color, size=14, width=20),
-            ft.Text(todo.title, color=color, weight="bold", size=13, expand=True, overflow="ellipsis", max_lines=1),
-        ],
-        spacing=4,
-        vertical_alignment="center",
-    )
+    prio_sym = PRIORITY_SYMBOLS.get(todo.priority, "·")
+    prio_color = theme.PRIORITY_COLORS.get(todo.priority, theme.TEXT_DIM)
+
+    line1_children = [
+        ft.Text(icon, color=color, size=14, width=20),
+        ft.Text(prio_sym, color=prio_color, size=13, width=14),
+        ft.Text(todo.title, color=color, weight="bold", size=13, expand=True, overflow="ellipsis", max_lines=1),
+    ]
+    if stats:
+        line1_children.append(ft.Text(stats, color=theme.TEXT_DIM, size=11))
+    line1 = ft.Row(line1_children, spacing=4, vertical_alignment="center")
 
     line2_children = []
     if ctx:
-        line2_children.append(ft.Text(ctx, color=theme.TEXT_DIM, size=11))
-    if stats:
-        line2_children.append(ft.Text(stats, color=theme.TEXT_DIM, size=11))
+        line2_children.append(ft.Text(ctx, color=theme.TEXT_SECONDARY, size=11))
     line2 = ft.Row(line2_children, spacing=8) if line2_children else ft.Container(height=0)
 
     return ft.Container(

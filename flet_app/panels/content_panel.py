@@ -36,6 +36,10 @@ class ContentPanel(ft.Container):
             self.title.value = f"  📄 {entry.tag_key.upper()}  ·  {entry.created_at[:16]}"
             parts = entry.content.split("\n", 1)
             head = f"### {parts[0]}\n"
-            tail = parts[1] if len(parts) > 1 else ""
-            self.body.value = head + ("\n---\n\n" + tail if tail.strip() else "")
+            if len(parts) > 1 and parts[1].strip():
+                # Preserve single-line breaks (markdown collapses bare \n)
+                tail = parts[1].replace("\n", "  \n")
+                self.body.value = head + "\n---\n\n" + tail
+            else:
+                self.body.value = head
         self.update()

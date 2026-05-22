@@ -51,11 +51,26 @@ class AppState:
         self.filter_keys = [None] + [t.key for t in self.work_tags if t.key in used]
         if self.log_filter not in self.filter_keys:
             self.log_filter = None
-        if self.log_entries:
-            filtered = self._filtered_entries()
-            self.displayed_entry_id = filtered[0].id if filtered else None
-        else:
+        if not self.log_entries:
             self.displayed_entry_id = None
+            return
+        filtered = self._filtered_entries()
+        existing_ids = {e.id for e in filtered}
+        if self.displayed_entry_id in existing_ids:
+            return
+        self.displayed_entry_id = filtered[0].id if filtered else None
+
+    def select_entry_relative(self, direction: int) -> None:
+        entries = self._filtered_entries()
+        if not entries:
+            return
+        ids = [e.id for e in entries]
+        if self.displayed_entry_id in ids:
+            idx = ids.index(self.displayed_entry_id) + direction
+        else:
+            idx = 0
+        idx = max(0, min(idx, len(ids) - 1))
+        self.displayed_entry_id = ids[idx]
 
     def load_todos(self) -> None:
         current_id = self.todos[self.todo_idx].id if self.todos else None
@@ -64,7 +79,7 @@ class AppState:
             0 if t.status == "active"
             else 1 if t.status in ("open", "paused")
             else 2 if t.status == "done"
-            else 3,
+            else 3,  # cancelled/dropped at very bottom
             t.created_at,
         ))
         if current_id is not None:

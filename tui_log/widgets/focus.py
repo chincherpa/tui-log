@@ -6,14 +6,16 @@ Focus-Session Modal – bewusst minimal und kompatibel gehalten.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+
 from rich.markup import escape
+from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, Static
-from textual.containers import Vertical
-from textual import on
 
 
 TIMER_PRESETS = [25, 45, 90, 0]   # 0 = offen
@@ -48,55 +50,75 @@ class FocusModal(ModalScreen[dict | None]):
     """
 
     BINDINGS = [
-        Binding("escape",  "minimize",     "Minimieren"),
-        Binding("ctrl+s",  "stop_session", "Session beenden"),
+        Binding("escape", "minimize", "Minimieren"),
+        Binding("ctrl+s", "stop_session", "Session beenden"),
     ]
+    DEFAULT_CSS = """
+    FocusModal {
+        align: center middle;
+    }
+    #fm-dialog {
+        background: #0A0A1A;
+        border: solid #5B8DEF;
+        width: 68;
+        height: auto;
+        padding: 1 2;
+    }
+    #fm-note-input {
+        margin-top: 1;
+    }
+    #fm-hint {
+        color: #777799;
+        margin-top: 1;
+    }
+    """
 
     def __init__(self, todo, context_entries: list) -> None:
         super().__init__()
-        self.todo        = todo
+        self.todo = todo
         self.ctx_entries = context_entries
-        self._preset_idx = 1        # Default: 45 min
+        self._preset_idx = 1  # Default: 45 min
         self._notes: list[tuple[str, str]] = []
         self._running = True
-        self._outcome  = "open"
+        self._outcome = "open"
         self._started_at = datetime.now()
 
-    # ── Compose ──────────────────────────────────────────────────────────────
-
     def compose(self) -> ComposeResult:
-        with Vertical(id="focus-dialog"):
-            yield Label(escape(self.todo.title), id="focus-todo-title")
-            yield Label(escape(self.todo.context or ""), id="focus-todo-context")
+        with Vertical(id="fm-dialog"):
+            title = escape(str(getattr(self.todo, "title", "") or "(ohne Titel)"))
+            context = escape(str(getattr(self.todo, "context", "") or ""))
+            yield Label(title)
+            if context:
+                yield Label(context)
 
-            yield Label(_build_timer_str(0, self._preset_idx), id="focus-timer-display")
-            yield Label(_build_preset_bar(self._preset_idx), id="focus-timer-bar")
+            yield Label(_build_timer_str(0, self._preset_idx), id="fm-timer-display")
+            yield Label(_build_preset_bar(self._preset_idx), id="fm-timer-bar")
 
-            yield Label("── Notizen ──────────────────────────────", id="focus-notes-label")
-            with Vertical(id="focus-notes-list"):
-                yield Static("", id="focus-notes-content")
-
-            yield Input(placeholder="Notiz einwerfen…", id="focus-note-input")
+            yield Label("Notizen")
+            yield Static("  (noch keine Notizen)", id="fm-notes-content")
+            yield Input(placeholder="Notiz einwerfen…", id="fm-note-input")
 
             if self.ctx_entries:
-                yield Label("── Kontext ──────────────────────────────", id="focus-context-label")
-                with Vertical(id="focus-context-list"):
+                yield Label("Kontext")
+                with Vertical():
                     for entry in self.ctx_entries[-4:]:
-                        ts = entry.created_at[11:16]
-                        yield Label(
-                            f"  {entry.date} {ts}  ({escape(entry.tag_key)})  {escape(entry.content[:45])}",
-                            classes="focus-context-line",
-                        )
+                        created_at = str(getattr(entry, "created_at", "") or "")
+                        ts = created_at[11:16] if len(created_at) >= 16 else "--:--"
+                        date_s = escape(str(getattr(entry, "date", "") or ""))
+                        tag_s = escape(str(getattr(entry, "tag_key", "") or ""))
+                        content_s = escape(str(getattr(entry, "content", "") or "")[:45])
+                        yield Label(f"  {date_s} {ts}  ({tag_s})  {content_s}")
 
             yield Label(
                 "Tab Preset  Ctrl+S Beenden  Esc Minimieren",
-                id="focus-hint",
+                id="fm-hint",
             )
 
     def on_mount(self) -> None:
-        self.query_one("#focus-note-input", Input).focus()
-
-    # ── Notizen ───────────────────────────────────────────────────────────────
+        try:
+            self.query_one("#fm-note-input", Input).focus()
+        except Exception:
+            logging.exception("FocusModal.on_mount: failed to focus note input")
 
     def _refresh_notes(self) -> None:
         lines = []
@@ -104,11 +126,11 @@ class FocusModal(ModalScreen[dict | None]):
             lines.append(f"  {t}  {escape(c)}")
         content = "\n".join(lines) if lines else "  (noch keine Notizen)"
         try:
-            self.query_one("#focus-notes-content", Static).update(content)
+            self.query_one("#fm-notes-content", Static).update(content)
         except Exception:
             pass
 
-    @on(Input.Submitted, "#focus-note-input")
+    @on(Input.Submitted, "#fm-note-input")
     def note_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
         if text:
@@ -117,37 +139,34 @@ class FocusModal(ModalScreen[dict | None]):
             event.input.clear()
             self._refresh_notes()
 
-    # ── Keys ──────────────────────────────────────────────────────────────────
-
     def on_key(self, event) -> None:
-        # Tab: Timer-Preset wechseln
         if event.key == "tab":
             self._preset_idx = (self._preset_idx + 1) % len(TIMER_PRESETS)
             try:
                 elapsed = max(0, int((datetime.now() - self._started_at).total_seconds()))
-                self.query_one("#focus-timer-bar", Label).update(_build_preset_bar(self._preset_idx))
-                self.query_one("#focus-timer-display", Label).update(_build_timer_str(elapsed, self._preset_idx))
+                self.query_one("#fm-timer-bar", Label).update(_build_preset_bar(self._preset_idx))
+                self.query_one("#fm-timer-display", Label).update(_build_timer_str(elapsed, self._preset_idx))
             except Exception:
                 pass
             event.stop()
-
         elif event.key == "1":
-            self._outcome = "solved";   self._show_outcome()
+            self._outcome = "solved"
+            self._show_outcome()
         elif event.key == "2":
-            self._outcome = "open";     self._show_outcome()
+            self._outcome = "open"
+            self._show_outcome()
         elif event.key == "3":
-            self._outcome = "blocked";  self._show_outcome()
+            self._outcome = "blocked"
+            self._show_outcome()
 
     def _show_outcome(self) -> None:
         label = OUTCOME_LABELS[self._outcome]
         try:
-            self.query_one("#focus-hint", Label).update(
+            self.query_one("#fm-hint", Label).update(
                 f"Outcome: {label}  |  Ctrl+S Beenden  Tab Preset  1/2/3 Outcome"
             )
         except Exception:
             pass
-
-    # ── Actions ───────────────────────────────────────────────────────────────
 
     def action_minimize(self) -> None:
         self._running = False
@@ -157,9 +176,9 @@ class FocusModal(ModalScreen[dict | None]):
         self._running = False
         elapsed = max(0, int((datetime.now() - self._started_at).total_seconds()))
         self.dismiss({
-            "outcome":   self._outcome,
+            "outcome": self._outcome,
             "elapsed_s": elapsed,
-            "notes":     [c for _, c in self._notes],
-            "preset":    PRESET_LABELS[self._preset_idx],
+            "notes": [c for _, c in self._notes],
+            "preset": PRESET_LABELS[self._preset_idx],
             "log_entry": "",
         })

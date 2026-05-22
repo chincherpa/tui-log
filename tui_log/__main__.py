@@ -19,13 +19,29 @@ from . import db_utils as db
 import logging
 import traceback
 
+class _FlushFileHandler(logging.FileHandler):
+    """FileHandler der nach jedem Record sofort flusht + fsynct."""
+    def emit(self, record):
+        super().emit(record)
+        try:
+            self.flush()
+            if self.stream is not None:
+                import os
+                os.fsync(self.stream.fileno())
+        except Exception:
+            pass
+
+
 def _setup_logging(log_path: Path) -> None:
-    """Schreibt alle Exceptions in tui-log.log neben der DB."""
-    logging.basicConfig(
-        filename=str(log_path),
-        level=logging.ERROR,
-        format="%(asctime)s  %(levelname)s  %(message)s",
-    )
+    """Schreibt Log nach tui-log.log neben der DB. DEBUG-Level + sofortiger Flush."""
+    handler = _FlushFileHandler(str(log_path), mode="a", encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s  %(levelname)s  %(message)s"))
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    # Alte Handler entfernen (falls basicConfig schon lief)
+    for h in list(root.handlers):
+        root.removeHandler(h)
+    root.addHandler(handler)
 
 
 def _parse_args():

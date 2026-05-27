@@ -35,6 +35,15 @@ def _dispatch(e: ft.KeyboardEvent, app: "WorkApp") -> None:
                 pass
             return
 
+    if key == "P":
+        pause_handler = getattr(app, "dialog_pause_handler", None)
+        if pause_handler is not None:
+            try:
+                pause_handler()
+            except Exception:
+                pass
+            return
+
     if app.dialog_open:
         return
 

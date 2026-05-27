@@ -7,30 +7,30 @@ import flet as ft
 from flet_app import theme
 
 _BINDINGS: list[tuple[str, str]] = [
-    ("L",            "Log-Eingabe fokussieren"),
-    ("Space",        "Todo aktivieren / pausieren"),
-    ("A",            "Neues Todo erstellen"),
-    ("F",            "Fokus-Session starten / beenden"),
-    ("D",            "Ausgewähltes Todo als erledigt markieren"),
-    ("Shift+D",      "Log-Eintrag löschen (Bestätigung)"),
-    ("X",            "Todo abbrechen (Bestätigung)"),
-    ("Enter",        "Todo-Details öffnen"),
-    ("E",            "Angezeigten Eintrag bearbeiten"),
-    ("C",            "Tag des Eintrags ändern"),
-    ("V",            "Neuesten Eintrag anzeigen"),
-    ("B",            "Filter rückwärts wechseln"),
-    ("N",            "Filter vorwärts wechseln"),
-    ("P",            "Tag rückwärts wechseln (Eingabe)"),
-    ("R",            "Alles aus DB neu laden"),
-    ("M",            "Content-Panel ein-/ausblenden"),
-    ("T",            "Todo-Panel ein-/ausblenden"),
-    ("W",            "Wochenrückblick öffnen"),
-    ("Q",            "Beenden"),
     ("↑ / K",        "Navigation nach oben"),
     ("↓ / J",        "Navigation nach unten"),
-    ("Tab",          "Nächstes Panel / nächster Tag (in Eingabe)"),
-    ("Shift+Tab",    "Voriges Panel / voriger Tag (in Eingabe)"),
+    ("A",            "Neues Todo erstellen"),
+    ("B",            "Filter rückwärts wechseln"),
+    ("C",            "Tag des Eintrags ändern"),
+    ("D",            "Ausgewähltes Todo als erledigt markieren"),
+    ("E",            "Angezeigten Eintrag bearbeiten"),
+    ("Enter",        "Todo-Details öffnen"),
     ("Esc",          "Dialog schließen"),
+    ("F",            "Fokus-Session starten / beenden"),
+    ("L",            "Log-Eingabe fokussieren"),
+    ("M",            "Content-Panel ein-/ausblenden"),
+    ("N",            "Filter vorwärts wechseln"),
+    ("P",            "Tag rückwärts wechseln (Eingabe)"),
+    ("Q",            "Beenden"),
+    ("R",            "Alles aus DB neu laden"),
+    ("Shift+D",      "Log-Eintrag löschen (Bestätigung)"),
+    ("Shift+Tab",    "Voriges Panel / voriger Tag (in Eingabe)"),
+    ("Space",        "Todo aktivieren / pausieren"),
+    ("T",            "Todo-Panel ein-/ausblenden"),
+    ("Tab",          "Nächstes Panel / nächster Tag (in Eingabe)"),
+    ("V",            "Neuesten Eintrag anzeigen"),
+    ("W",            "Wochenrückblick öffnen"),
+    ("X",            "Todo abbrechen (Bestätigung)"),
 ]
 
 
@@ -45,7 +45,7 @@ def show_keybindings_help(page: ft.Page) -> None:
                 [
                     ft.Container(
                         content=ft.Text(key, color=theme.ACCENT_BLUE, size=12,
-                                        weight="bold", font_family="monospace"),
+                                        weight=ft.FontWeight.BOLD, font_family="monospace"),
                         width=130,
                     ),
                     ft.Text(desc, color=theme.TEXT_PRIMARY, size=12),
@@ -57,15 +57,15 @@ def show_keybindings_help(page: ft.Page) -> None:
     dlg = ft.AlertDialog(
         modal=True,
         bgcolor=theme.BG_PANEL,
-        title=ft.Text("⌨  Tastenkürzel", color=theme.TEXT_PRIMARY, size=15, weight="bold"),
+        title=ft.Text("⌨  Tastenkürzel", color=theme.TEXT_PRIMARY, size=15, weight=ft.FontWeight.BOLD),
         content=ft.Container(
-            content=ft.Column(rows, spacing=6, scroll="auto"),
+            content=ft.Column(rows, spacing=6, scroll=ft.ScrollMode.AUTO),
             width=460,
             height=460,
         ),
         actions=[
             ft.TextButton("Schließen", on_click=_close),
         ],
-        actions_alignment="end",
+        actions_alignment=ft.MainAxisAlignment.END,
     )
     page.show_dialog(dlg)

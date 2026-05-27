@@ -40,8 +40,8 @@ def show_focus(
     started_dt = datetime.fromisoformat(started_at)
     state["period_start"] = started_dt
 
-    title = ft.Text(f"Focus  ·  {todo.title[:40]}", color=theme.TEXT_PRIMARY, weight="bold", size=14)
-    timer_label = ft.Text("", color=theme.STATUS_COLORS["active"], size=24, weight="bold")
+    title = ft.Text(f"Focus  ·  {todo.title[:40]}", color=theme.TEXT_PRIMARY, weight=ft.FontWeight.BOLD, size=14)
+    timer_label = ft.Text("", color=theme.STATUS_COLORS["active"], size=24, weight=ft.FontWeight.BOLD)
     pause_btn = ft.OutlinedButton("⏸  Pause", on_click=lambda _e: _toggle_pause())
 
     # ── Sub-Todos ─────────────────────────────────────────────────
@@ -62,7 +62,7 @@ def show_focus(
             on_tap=_on_toggle,
             content=ft.Container(
                 content=ft.Row(
-                    [
+                    [  # type: ignore[arg-type]
                         ft.Text(check_icon, color=check_color, size=13, width=18),
                         ft.Text(
                             st.title,
@@ -71,11 +71,11 @@ def show_focus(
                             style=title_style,
                             expand=True,
                             max_lines=2,
-                            overflow="ellipsis",
+                            overflow=ft.TextOverflow.ELLIPSIS,
                         ),
                     ],
                     spacing=6,
-                    vertical_alignment="center",
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 padding=ft.Padding(left=4, right=4, top=3, bottom=3),
                 border_radius=4,
@@ -94,14 +94,14 @@ def show_focus(
 
     _reload_subtodos()
 
-    subtodo_input = ft.TextField(
+    subtodo_input = ft.TextField(  # type: ignore[call-arg]
         hint_text="Sub-Todo hinzufügen...",
         border_color=theme.BORDER,
         focused_border_color=theme.ACCENT_BLUE,
         text_size=12,
         height=36,
         content_padding=ft.Padding(left=8, right=8, top=4, bottom=4),
-        on_submit=lambda _e: _add_subtodo(),
+        on_submit=lambda _e: _add_subtodo(),  # type: ignore[call-arg]
     )
 
     def _add_subtodo() -> None:
@@ -113,14 +113,14 @@ def show_focus(
         _reload_subtodos()
 
     # ── Notes ──────────────────────────────────────────────────────
-    note_input = ft.TextField(
+    note_input = ft.TextField(  # type: ignore[call-arg]
         hint_text="Notiz hinzufügen...",
         border_color=theme.BORDER,
         focused_border_color=theme.ACCENT_BLUE,
         text_size=13,
-        on_submit=lambda _e: _add_note(),
+        on_submit=lambda _e: _add_note(),  # type: ignore[call-arg]
     )
-    notes_view = ft.Column([], spacing=2, scroll="auto", height=120)
+    notes_view = ft.Column([], spacing=2, scroll=ft.ScrollMode.AUTO, height=120)
 
     def _add_note() -> None:
         text = (note_input.value or "").strip()
@@ -147,12 +147,12 @@ def show_focus(
             state["period_start"] = datetime.now()
             state["paused"] = False
             timer_label.color = theme.STATUS_COLORS["active"]
-            pause_btn.text = "⏸  Pause"
+            pause_btn.text = "⏸  Pause"  # type: ignore[attr-defined]
         else:
             state["accumulated_s"] = _elapsed_s()
             state["paused"] = True
             timer_label.color = theme.ACCENT_GOLD
-            pause_btn.text = "▶  Weiter"
+            pause_btn.text = "▶  Weiter"  # type: ignore[attr-defined]
         try:
             timer_label.update()
             pause_btn.update()
@@ -176,6 +176,7 @@ def show_focus(
         state["stopped"] = True
         if app is not None:
             app.dialog_escape_handler = None
+            app.dialog_pause_handler = None
         page.pop_dialog()
         on_done(payload)
 
@@ -197,10 +198,10 @@ def show_focus(
         content=ft.Column(
             [
                 ft.Row([timer_label, pause_btn],
-                       alignment="center", vertical_alignment="center", spacing=12),
+                       alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=12),
                 ft.Divider(color=theme.BORDER),
                 *([
-                    ft.Text("Sub-Todos", color=theme.TEXT_DIM, size=10, weight="bold"),
+                    ft.Text("Sub-Todos", color=theme.TEXT_DIM, size=10, weight=ft.FontWeight.BOLD),
                     subtodos_col,
                     subtodo_input,
                     ft.Divider(color=theme.BORDER),
@@ -210,17 +211,18 @@ def show_focus(
             ],
             width=520, spacing=10, tight=True,
         ),
-        actions=[
+        actions=[  # type: ignore[arg-type]
             ft.TextButton("Minimieren (Esc)", on_click=_minimize),
             ft.OutlinedButton("Blockiert", on_click=lambda _e: _stop("blocked")),
             ft.OutlinedButton("Weiter offen", on_click=lambda _e: _stop("open")),
             ft.FilledButton("Gelöst", on_click=lambda _e: _stop("solved"),
                             style=ft.ButtonStyle(bgcolor=theme.STATUS_COLORS["active"], color="#000000")),
         ],
-        actions_alignment="end",
+        actions_alignment=ft.MainAxisAlignment.END,
     )
     if app is not None:
         app.dialog_escape_handler = lambda: _minimize()
+        app.dialog_pause_handler = lambda: _toggle_pause()
     page.show_dialog(dlg)
     try:
         page.run_task(_tick)

@@ -17,11 +17,9 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, Static
 
-
 TIMER_PRESETS = [25, 45, 90, 0]   # 0 = offen
 PRESET_LABELS = ["25 min", "45 min", "90 min", "Offen"]
 OUTCOME_LABELS = {"solved": "Gelöst ✓", "open": "Weiter offen", "blocked": "Blockiert ✕"}
-
 
 def _build_timer_str(elapsed: int, preset_idx: int) -> str:
     """Einfacher Timer-String ohne dynamische Progress-Bar."""
@@ -36,13 +34,11 @@ def _build_timer_str(elapsed: int, preset_idx: int) -> str:
         return f"  Laufzeit {h:02d}:{m:02d}:{s:02d}  Rest {rm:02d}:{rs:02d}  ({PRESET_LABELS[preset_idx]})"
     return f"  Laufzeit {h:02d}:{m:02d}:{s:02d}  ({PRESET_LABELS[preset_idx]})"
 
-
 def _build_preset_bar(preset_idx: int) -> str:
     parts = []
     for i, label in enumerate(PRESET_LABELS):
         parts.append(f">{label}<" if i == preset_idx else label)
     return "  " + "  ·  ".join(parts)
-
 
 class FocusModal(ModalScreen[dict | None]):
     """

@@ -219,7 +219,6 @@ from tui_log import db_utils as db
 from tui_log.tags import TagRegistry
 from flet_app.state import AppState
 
-
 def _make_state(tmp: Path) -> AppState:
     db_path = tmp / "journal.db"
     init_db(db_path)
@@ -230,7 +229,6 @@ def _make_state(tmp: Path) -> AppState:
     state = AppState(db_path=db_path, tags=tags, work_tags=[])
     state.load_all()
     return state
-
 
 class TestAppState(unittest.TestCase):
 
@@ -258,7 +256,6 @@ class TestAppState(unittest.TestCase):
             s.todo_idx = 99
             s.clamp_todo_idx()
             self.assertEqual(s.todo_idx, 1)
-
 
 if __name__ == "__main__":
     unittest.main()
@@ -289,7 +286,6 @@ from typing import Callable
 
 from tui_log import db_utils as db
 from tui_log.tags import TagRegistry
-
 
 class AppState:
     def __init__(self, db_path: Path, tags: TagRegistry, work_tags: list) -> None:
@@ -433,7 +429,6 @@ import flet as ft
 
 from flet_app import theme
 
-
 def show_toast(page: ft.Page, message: str, *, severity: str = "info", duration_ms: int = 2000) -> None:
     """Display a transient SnackBar at the bottom of the page."""
     bg = {
@@ -491,13 +486,11 @@ from tui_log.tags import TagRegistry
 
 from flet_app import theme
 
-
 def _fmt_time(iso_dt: str) -> str:
     try:
         return iso_dt[11:16]
     except (TypeError, IndexError):
         return "??:??"
-
 
 def build_log_entry_row(
     entry: db.LogEntry,
@@ -540,7 +533,6 @@ def build_log_entry_row(
         border_radius=4,
         on_click=lambda _e: on_click(entry),
     )
-
 
 def build_date_separator(label: str) -> ft.Control:
     return ft.Container(
@@ -585,7 +577,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 def _fmt_duration(seconds: int) -> str:
     if seconds < 60:
         return f"{seconds}s"
@@ -594,7 +585,6 @@ def _fmt_duration(seconds: int) -> str:
     if h == 0:
         return f"{m}m"
     return f"{h}h{m % 60:02d}"
-
 
 def build_todo_row(
     todo: db.Todo,
@@ -685,7 +675,6 @@ from tui_log import db_utils as db
 from flet_app import theme
 from flet_app.state import AppState
 from flet_app.widgets.log_entry_row import build_log_entry_row, build_date_separator
-
 
 class LogPanel(ft.Container):
     """Left column container — full panel widget."""
@@ -863,7 +852,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 class ContentPanel(ft.Container):
     def __init__(self) -> None:
         self.title = ft.Text("", color=theme.TEXT_SECONDARY, size=12, weight="bold")
@@ -933,7 +921,6 @@ from tui_log import db_utils as db
 from flet_app import theme
 from flet_app.state import AppState
 from flet_app.widgets.todo_row import build_todo_row
-
 
 class TodoPanel(ft.Container):
     def __init__(self, state: AppState, on_todo_select: Callable[[db.Todo], None]) -> None:
@@ -1039,7 +1026,6 @@ import flet as ft
 
 from flet_app import theme
 
-
 def show_confirm(page: ft.Page, message: str, on_confirm: Callable[[bool], None]) -> None:
     def _close(result: bool) -> None:
         page.close(dlg)
@@ -1095,7 +1081,6 @@ from flet_app import theme
 
 PRIORITIES = ["high", "normal", "low"]
 PRIORITY_DISPLAY = {"high": "▲ high", "normal": "● normal", "low": "▼ low"}
-
 
 def show_new_todo(
     page: ft.Page,
@@ -1179,7 +1164,6 @@ from tui_log.tags import TagRegistry
 
 from flet_app import theme
 
-
 def show_tag_select(
     page: ft.Page,
     tags: TagRegistry,
@@ -1256,7 +1240,6 @@ from typing import Callable
 import flet as ft
 
 from flet_app import theme
-
 
 def show_content_edit(
     page: ft.Page,
@@ -1338,7 +1321,6 @@ from flet_app import theme
 
 TIMER_PRESETS = [25, 45, 90, 0]
 PRESET_LABELS = ["25 min", "45 min", "90 min", "Offen"]
-
 
 def show_focus(
     page: ft.Page,
@@ -1479,7 +1461,6 @@ from flet_app import theme
 OUTCOMES = ["solved", "open", "blocked"]
 OUTCOME_DISPLAY = {"solved": "✓ Gelöst", "open": "↻ Weiter offen", "blocked": "✕ Blockiert"}
 
-
 def _fmt_duration(seconds: int) -> str:
     m = seconds // 60
     h = m // 60
@@ -1487,7 +1468,6 @@ def _fmt_duration(seconds: int) -> str:
     if h == 0:
         return f"{m} min"
     return f"{h}h {rm:02d}min"
-
 
 def show_debriefing(
     page: ft.Page,
@@ -1568,7 +1548,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 def _fmt_duration(seconds: int) -> str:
     if seconds == 0:
         return "–"
@@ -1579,13 +1558,11 @@ def _fmt_duration(seconds: int) -> str:
         return f"{m}m"
     return f"{h}h {rm:02d}m"
 
-
 def _energy_dots(value: float | None) -> str:
     if value is None:
         return "–"
     filled = round(value)
     return "●" * filled + "○" * (5 - filled) + f"  {value:.1f}/5"
-
 
 def show_weekly(page: ft.Page, db_path: Path) -> None:
     state = {"offset": 0}
@@ -1689,7 +1666,6 @@ import flet as ft
 
 from flet_app.widgets.toast import show_toast
 
-
 async def _run(*args: str, cwd: str) -> tuple[int, str]:
     proc = await asyncio.create_subprocess_exec(
         *args, cwd=cwd,
@@ -1698,7 +1674,6 @@ async def _run(*args: str, cwd: str) -> tuple[int, str]:
     )
     out, err = await proc.communicate()
     return proc.returncode, (out + err).decode(errors="replace")
-
 
 async def _push(page: ft.Page, db_path: Path) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1725,7 +1700,6 @@ async def _push(page: ft.Page, db_path: Path) -> None:
         show_toast(page, f"journal.db gepushed [{timestamp}]", severity="success", duration_ms=3000)
     else:
         show_toast(page, "git push fehlgeschlagen", severity="error", duration_ms=4000)
-
 
 def trigger_git_push(page: ft.Page, db_path: Path) -> None:
     """Run the async push in a background thread so the UI stays responsive."""
@@ -1782,10 +1756,8 @@ import flet as ft
 if TYPE_CHECKING:
     from flet_app.main import WorkApp
 
-
 def attach(page: ft.Page, app: "WorkApp") -> None:
     page.on_keyboard_event = lambda e: _dispatch(e, app)
-
 
 def _dispatch(e: ft.KeyboardEvent, app: "WorkApp") -> None:
     key = e.key
@@ -1909,9 +1881,7 @@ from flet_app.git_push import trigger_git_push
 from flet_app.widgets.toast import show_toast
 from flet_app import keybindings
 
-
 PANEL_ORDER = ["log", "content", "todo"]
-
 
 class WorkApp:
     def __init__(self, page: ft.Page, cfg: AppConfig) -> None:
@@ -2269,7 +2239,6 @@ class WorkApp:
             show_debriefing(self.page, todo.title, payload["elapsed_s"], payload["outcome"], _on_debrief)
 
         show_focus(self.page, todo, session.started_at, _on_focus_done)
-
 
 # ── entry point ───────────────────────────────────────────────────────────
 

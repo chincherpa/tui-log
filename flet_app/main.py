@@ -30,9 +30,7 @@ from flet_app.git_push import trigger_git_push
 from flet_app.widgets.toast import show_toast
 from flet_app import keybindings
 
-
 PANEL_ORDER = ["log", "content", "todo"]
-
 
 class WorkApp:
     def __init__(self, page: ft.Page, cfg: AppConfig) -> None:
@@ -473,7 +471,6 @@ class WorkApp:
                 show_toast(self.page, f"Fehler: {e}", severity="error", duration_ms=4000)
 
         show_debriefing(self.page, todo.title, elapsed_s, suggested, _on_debrief)
-
 
 # ── entry point ───────────────────────────────────────────────────────────
 

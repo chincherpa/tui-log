@@ -67,7 +67,6 @@ def _sym_w(s: str) -> int:
             w += 1
     return w
 
-
 def _tag_markup(tag_key: str, tags) -> str:
     """Gibt Rich-Markup für ein Tag zurück."""
     tag = tags.get(tag_key)
@@ -75,14 +74,12 @@ def _tag_markup(tag_key: str, tags) -> str:
         return f"[bold {tag.color}]{tag.symbol} {tag.key}[/]"
     return f"[dim]{tag_key}[/]"
 
-
 def _fmt_time(iso_dt: str) -> str:
     """'2026-03-31 09:14:32' → '09:14'"""
     try:
         return iso_dt[11:16]
     except TypeError:
         return "??:??"
-
 
 def _fmt_content(content: str) -> str:
     """Erste Zeile als Titel hervorheben, Rest als Body."""
@@ -92,7 +89,6 @@ def _fmt_content(content: str) -> str:
         return title + "\n[dim]─────────────────────[/dim]\n" + escape(parts[1])
     return title
 
-
 def _fmt_duration(seconds: int) -> str:
     if seconds < 60:
         return f"{seconds}s"
@@ -101,7 +97,6 @@ def _fmt_duration(seconds: int) -> str:
     if h == 0:
         return f"{m}m"
     return f"{h}h{m % 60:02d}"
-
 
 # ── Log-Eintrag Widget ────────────────────────────────────────────────────────
 
@@ -127,7 +122,6 @@ class LogEntryWidget(Static):
         )
         super().__init__(markup, classes="log-entry")
         self.entry = entry
-
 
 # ── Todo-Eintrag Widget ───────────────────────────────────────────────────────
 
@@ -157,7 +151,6 @@ PRIORITY_COLORS = {
     "low":    "#555577",
 }
 
-
 class TodoItemWidget(Static):
     """Zwei-Zeilen Todo-Eintrag."""
 
@@ -178,7 +171,6 @@ class TodoItemWidget(Static):
         markup = f"{line1}\n{line2}"
         super().__init__(markup, classes="todo-item")
         self.todo = todo
-
 
 class TodoListContent(Static):
     """Subclass von Static, die Pfeiltasten im Todo-Panel abfängt.
@@ -225,7 +217,6 @@ class TodoListContent(Static):
                 pass
 
 
-
 # ── Bestätigungs-Modal ────────────────────────────────────────────────────────
 
 class _ConfirmModal(ModalScreen[bool]):
@@ -264,7 +255,6 @@ class _ConfirmModal(ModalScreen[bool]):
 
     def action_cancel(self) -> None:
         self.dismiss(False)
-
 
 # ── Tag-Auswahl-Modal ─────────────────────────────────────────────────────────
 
@@ -321,7 +311,6 @@ class TagSelectModal(ModalScreen):
 
     def action_cancel(self) -> None:
         self.dismiss(None)
-
 
 # ── Haupt-App ─────────────────────────────────────────────────────────────────
 
@@ -1187,7 +1176,6 @@ class WorkApp(App):
         self._content_visible = not self._content_visible
         panel.display = self._content_visible
 
-
     # ── Refresh ──────────────────────────────────────────────────────────────
 
     def action_refresh_all(self) -> None:
@@ -1231,7 +1219,6 @@ class WorkApp(App):
             self.notify(f"journal.db gepushed  [{timestamp}]", timeout=3)
         else:
             self.notify("git push fehlgeschlagen", severity="error", timeout=4)
-
 
 # ── Entry Point ───────────────────────────────────────────────────────────────
 

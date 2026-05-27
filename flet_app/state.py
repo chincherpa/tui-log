@@ -14,7 +14,6 @@ from typing import Callable
 from tui_log import db_utils as db
 from tui_log.tags import TagRegistry
 
-
 class AppState:
     def __init__(self, db_path: Path, tags: TagRegistry, work_tags: list) -> None:
         self.db_path = db_path

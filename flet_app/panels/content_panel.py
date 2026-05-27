@@ -8,7 +8,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 class ContentPanel(ft.Container):
     def __init__(self) -> None:
         self.title = ft.Text("", color=theme.TEXT_SECONDARY, size=12, weight="bold")

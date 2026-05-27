@@ -12,7 +12,6 @@ from flet_app import theme
 from flet_app.state import AppState
 from flet_app.widgets.todo_row import build_todo_row
 
-
 class TodoPanel(ft.Container):
     def __init__(self, state: AppState, on_todo_select: Callable[[db.Todo], None]) -> None:
         self.state = state
@@ -122,7 +121,7 @@ class TodoPanel(ft.Container):
 
         return ft.Container(
             content=ft.Column(children, spacing=2, tight=True),
-            padding=ft.padding.only(left=24, right=12, top=4, bottom=6),
+            padding=ft.Padding(left=24, right=12, top=4, bottom=6),
             bgcolor=theme.BG_PANEL,
             border=ft.Border.only(left=ft.BorderSide(2, theme.BORDER)),
         )

@@ -22,7 +22,6 @@ from flet_app import theme
 TIMER_PRESETS = [25, 45, 90, 0]
 PRESET_LABELS = ["25 min", "45 min", "90 min", "Offen"]
 
-
 def show_focus(
     page: ft.Page,
     todo: db.Todo,

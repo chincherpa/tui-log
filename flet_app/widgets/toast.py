@@ -6,7 +6,6 @@ import flet as ft
 
 from flet_app import theme
 
-
 def show_toast(page: ft.Page, message: str, *, severity: str = "info", duration_ms: int = 500) -> None:
     """Display a transient SnackBar at the bottom of the page."""
     bg = {

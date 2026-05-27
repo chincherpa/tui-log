@@ -13,7 +13,6 @@ from flet_app import theme
 from flet_app.state import AppState
 from flet_app.widgets.log_entry_row import build_log_entry_row, build_date_separator
 
-
 class LogPanel(ft.Container):
     """Left column container — full panel widget."""
 

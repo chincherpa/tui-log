@@ -10,7 +10,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 def _fmt_duration(seconds: int) -> str:
     if seconds < 60:
         return f"{seconds}s"
@@ -20,9 +19,7 @@ def _fmt_duration(seconds: int) -> str:
         return f"{m}m"
     return f"{h}h{m % 60:02d}"
 
-
 PRIORITY_SYMBOLS = {"high": "▲", "normal": "●", "low": "▼"}
-
 
 def build_todo_row(
     todo: db.Todo,

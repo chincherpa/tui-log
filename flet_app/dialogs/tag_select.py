@@ -10,7 +10,6 @@ from tui_log.tags import TagRegistry
 
 from flet_app import theme
 
-
 def show_tag_select(
     page: ft.Page,
     tags: TagRegistry,

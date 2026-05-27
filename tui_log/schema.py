@@ -221,7 +221,6 @@ def _exec_migration_sql(conn: sqlite3.Connection, sql: str) -> None:
         if code:
             conn.execute(stmt)
 
-
 def _current_version(conn: sqlite3.Connection) -> int:
     """Aktuelle Schema-Version aus DB lesen (0 wenn frisch)."""
     try:

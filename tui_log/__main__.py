@@ -31,7 +31,6 @@ class _FlushFileHandler(logging.FileHandler):
         except Exception:
             pass
 
-
 def _setup_logging(log_path: Path) -> None:
     """Schreibt Log nach tui-log.log neben der DB. DEBUG-Level + sofortiger Flush."""
     handler = _FlushFileHandler(str(log_path), mode="a", encoding="utf-8")
@@ -42,7 +41,6 @@ def _setup_logging(log_path: Path) -> None:
     for h in list(root.handlers):
         root.removeHandler(h)
     root.addHandler(handler)
-
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -56,7 +54,6 @@ def _parse_args():
         help="Alternative config.toml",
     )
     return parser.parse_args()
-
 
 def main() -> None:
     args = _parse_args()
@@ -92,7 +89,6 @@ def main() -> None:
     # 4. WAL-Checkpoint: -shm und -wal Dateien aufräumen
     _wal_cleanup(cfg.db_path)
 
-
 def _wal_cleanup(db_path: Path) -> None:
     """
     WAL-Checkpoint nach App-Exit.
@@ -106,7 +102,6 @@ def _wal_cleanup(db_path: Path) -> None:
         conn.close()
     except Exception:
         pass   # Nicht kritisch – beim nächsten Start wird es nachgeholt
-
 
 if __name__ == "__main__":
     main()

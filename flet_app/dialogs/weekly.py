@@ -11,7 +11,6 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-
 def _fmt_duration(seconds: int) -> str:
     if seconds == 0:
         return "–"
@@ -22,13 +21,11 @@ def _fmt_duration(seconds: int) -> str:
         return f"{m}m"
     return f"{h}h {rm:02d}m"
 
-
 def _energy_dots(value: float | None) -> str:
     if value is None:
         return "–"
     filled = round(value)
     return "●" * filled + "○" * (5 - filled) + f"  {value:.1f}/5"
-
 
 def show_weekly(page: ft.Page, db_path: Path) -> None:
     state = {"offset": 0}

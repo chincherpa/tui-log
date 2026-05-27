@@ -15,15 +15,12 @@ import flet as ft
 if TYPE_CHECKING:
     from flet_app.main import WorkApp
 
-
 SPACE_KEYS = {" ", "Space", "Spacebar"}
 ARROW_UP_KEYS = {"Arrow Up", "ArrowUp", "Up"}
 ARROW_DOWN_KEYS = {"Arrow Down", "ArrowDown", "Down"}
 
-
 def attach(page: ft.Page, app: "WorkApp") -> None:
     page.on_keyboard_event = lambda e: _dispatch(e, app)
-
 
 def _dispatch(e: ft.KeyboardEvent, app: "WorkApp") -> None:
     key = e.key

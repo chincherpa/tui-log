@@ -4,7 +4,6 @@ from pathlib import Path
 from tui_log import schema
 from tui_log import db_utils as db
 
-
 def test_log_update():
     with tempfile.TemporaryDirectory() as td:
         db_path = Path(td) / "journal.db"
@@ -22,7 +21,6 @@ def test_log_update():
         assert updated2 is not None
         assert updated2.tag_key == "note"
         assert updated2.resolved == 1
-
 
 if __name__ == "__main__":
     test_log_update()

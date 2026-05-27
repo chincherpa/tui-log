@@ -12,7 +12,6 @@ from textual.binding import Binding
 from textual.widgets import TextArea, Label, Static
 from textual.containers import Vertical
 
-
 class ContentEditModal(ModalScreen[str | None]):
     """Modal zum Bearbeiten von mehrzeiligem Text. Gibt den neuen Text oder None zurück."""
 
@@ -72,7 +71,6 @@ class ContentEditModal(ModalScreen[str | None]):
 
     def action_cancel(self) -> None:
         self.dismiss(None)
-
 
 class ContentView(Static):
     """Einfaches read-only Widget für mehrzeiligen Content. Verwaltet set_content().

@@ -11,7 +11,6 @@ from flet_app import theme
 PRIORITIES = ["high", "normal", "low"]
 PRIORITY_DISPLAY = {"high": "▲ high", "normal": "● normal", "low": "▼ low"}
 
-
 def show_new_todo(
     page: ft.Page,
     on_save: Callable[[dict | None], None],

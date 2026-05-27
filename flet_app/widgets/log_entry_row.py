@@ -11,13 +11,11 @@ from tui_log.tags import TagRegistry
 
 from flet_app import theme
 
-
 def _fmt_time(iso_dt: str) -> str:
     try:
         return iso_dt[11:16]
     except (TypeError, IndexError):
         return "??:??"
-
 
 def build_log_entry_row(
     entry: db.LogEntry,
@@ -60,7 +58,6 @@ def build_log_entry_row(
         border_radius=4,
         on_click=lambda _e: on_click(entry),
     )
-
 
 def build_date_separator(label: str) -> ft.Control:
     return ft.Container(

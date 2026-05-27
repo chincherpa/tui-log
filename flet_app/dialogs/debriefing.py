@@ -16,7 +16,6 @@ OUTCOME_COLOR = {
     "blocked": theme.ACCENT_RED,
 }
 
-
 def _fmt_duration(seconds: int) -> str:
     m = seconds // 60
     h = m // 60
@@ -24,7 +23,6 @@ def _fmt_duration(seconds: int) -> str:
     if h == 0:
         return f"{m} min"
     return f"{h}h {rm:02d}min"
-
 
 def show_debriefing(
     page: ft.Page,

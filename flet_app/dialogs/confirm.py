@@ -8,7 +8,6 @@ import flet as ft
 
 from flet_app import theme
 
-
 def show_confirm(page: ft.Page, message: str, on_confirm: Callable[[bool], None]) -> None:
     def _close(result: bool) -> None:
         page.pop_dialog()

@@ -15,7 +15,6 @@ from tui_log import db_utils as db
 from tui_log.tags import TagRegistry
 from flet_app.state import AppState
 
-
 def _make_state(tmp: Path) -> AppState:
     db_path = tmp / "journal.db"
     init_db(db_path)
@@ -26,7 +25,6 @@ def _make_state(tmp: Path) -> AppState:
     state = AppState(db_path=db_path, tags=tags, work_tags=[])
     state.load_all()
     return state
-
 
 class TestAppState(unittest.TestCase):
 
@@ -54,7 +52,6 @@ class TestAppState(unittest.TestCase):
             s.todo_idx = 99
             s.clamp_todo_idx()
             self.assertEqual(s.todo_idx, 1)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,6 @@ import flet as ft
 
 from flet_app import theme
 
-
 def show_content_edit(
     page: ft.Page,
     initial: str,

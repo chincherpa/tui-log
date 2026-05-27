@@ -11,6 +11,7 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 from flet_app.state import AppState
+from flet_app.dialogs.keybindings_help import show_keybindings_help
 from flet_app.widgets.log_entry_row import build_log_entry_row, build_date_separator
 
 class LogPanel(ft.Container):
@@ -19,11 +20,13 @@ class LogPanel(ft.Container):
     def __init__(
         self,
         state: AppState,
+        page: ft.Page,
         on_entry_select: Callable[[db.LogEntry], None],
         on_log_submit: Callable[[str], None],
         on_input_focus_change: Callable[[bool], None] | None = None,
     ) -> None:
         self.state = state
+        self._page = page
         self.on_entry_select = on_entry_select
         self.on_log_submit = on_log_submit
         self.on_input_focus_change = on_input_focus_change
@@ -53,9 +56,19 @@ class LogPanel(ft.Container):
         )
         input_row = ft.Row([self.tag_chip, self.input], spacing=6)
 
+        help_button = ft.TextButton(
+            "⌨  Tastenkürzel",
+            on_click=lambda _e: show_keybindings_help(self._page),
+            style=ft.ButtonStyle(
+                color=theme.TEXT_DIM,
+                padding=ft.Padding.symmetric(horizontal=4, vertical=2),
+            ),
+        )
+        bottom_bar = ft.Row([help_button], alignment="start")
+
         super().__init__(
             content=ft.Column(
-                [self.title, self.filter_bar, self.carry_over, self.list_view, input_row],
+                [self.title, self.filter_bar, self.carry_over, self.list_view, input_row, bottom_bar],
                 spacing=6,
                 expand=True,
             ),

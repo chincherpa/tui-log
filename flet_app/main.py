@@ -26,6 +26,8 @@ from flet_app.dialogs.content_edit import show_content_edit
 from flet_app.dialogs.focus import show_focus
 from flet_app.dialogs.debriefing import show_debriefing
 from flet_app.dialogs.weekly import show_weekly
+from flet_app.dialogs.todo_detail import show_todo_detail
+from flet_app.dialogs.keybindings_help import show_keybindings_help
 from flet_app.git_push import trigger_git_push
 from flet_app.widgets.toast import show_toast
 from flet_app import keybindings
@@ -43,6 +45,7 @@ class WorkApp:
 
         self.log_panel = LogPanel(
             self.state,
+            page,
             on_entry_select=self._on_entry_select,
             on_log_submit=self._on_log_submit,
             on_input_focus_change=self._on_input_focus_change,
@@ -284,6 +287,17 @@ class WorkApp:
         self.state.load_todos()
         self.todo_panel.render()
 
+    def action_todo_detail(self) -> None:
+        if not self.state.todos:
+            return
+        todo = self.state.todos[self.state.todo_idx]
+
+        def _on_close(_result) -> None:
+            self.state.load_todos()
+            self._refresh_all_panels()
+
+        show_todo_detail(self.page, todo, self.state.db_path, _on_close, app=self)
+
     def action_todo_done(self) -> None:
         if not self.state.todos:
             return
@@ -418,10 +432,8 @@ class WorkApp:
 
         existing = db.session_get_active(self.state.db_path)
         if existing and existing.todo_id == todo.id:
-            # Pressing F on already-focused todo → end with debriefing
-            started = datetime.fromisoformat(existing.started_at)
-            elapsed_s = int((datetime.now() - started).total_seconds())
-            self._finalize_session(existing.id, todo, elapsed_s, suggested="open", notes=[])
+            # F on the same todo while minimized → reopen the focus dialog
+            self._reopen_focus(existing, todo)
             return
 
         if existing:
@@ -430,7 +442,9 @@ class WorkApp:
         session = db.session_start(self.state.db_path, todo.id)
         self.state.check_active_session()
         self._refresh_all_panels()
+        self._reopen_focus(session, todo)
 
+    def _reopen_focus(self, session: db.FocusSession, todo: db.Todo) -> None:
         def _on_focus_done(payload: dict) -> None:
             self.dialog_escape_handler = None
             if payload.get("action") == "minimize":
@@ -441,7 +455,8 @@ class WorkApp:
                 notes=payload.get("notes", []),
             )
 
-        show_focus(self.page, todo, session.started_at, _on_focus_done, app=self)
+        show_focus(self.page, todo, session.started_at, _on_focus_done,
+                   db_path=self.state.db_path, app=self)
 
     def _finalize_session(self, session_id: int, todo: db.Todo, elapsed_s: int,
                           *, suggested: str, notes: list[str]) -> None:

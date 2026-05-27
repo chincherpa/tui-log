@@ -91,8 +91,12 @@ class TodoPanel(ft.Container):
             notes = db.note_list_for_todo(self.state.db_path, todo.id)
         except Exception:
             notes = []
+        try:
+            subtodos = db.subtodo_list_for_todo(self.state.db_path, todo.id)
+        except Exception:
+            subtodos = []
         linked_logs = [e for e in self.state.log_entries if getattr(e, "todo_id", None) == todo.id]
-        if not notes and not linked_logs:
+        if not notes and not linked_logs and not subtodos:
             return None
 
         children: list[ft.Control] = []
@@ -104,6 +108,22 @@ class TodoPanel(ft.Container):
                     ft.Text(
                         f"  [{e.tag_key}]  {first}  ·  {e.created_at[:16]}",
                         color=theme.TEXT_PRIMARY, size=11, max_lines=1, overflow="ellipsis",
+                    )
+                )
+        if subtodos:
+            if children:
+                children.append(ft.Container(height=2))
+            children.append(ft.Text("Sub-Todos", color=theme.TEXT_DIM, size=10, weight="bold"))
+            for st in subtodos:
+                check = "✓" if st.done else "○"
+                color = theme.STATUS_COLORS["done"] if st.done else theme.TEXT_SECONDARY
+                children.append(
+                    ft.Text(
+                        f"  {check}  {st.title}",
+                        color=color,
+                        size=11,
+                        max_lines=1,
+                        overflow="ellipsis",
                     )
                 )
         if notes:

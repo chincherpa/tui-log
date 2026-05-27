@@ -48,6 +48,8 @@ def _dispatch(e: ft.KeyboardEvent, app: "WorkApp") -> None:
         return
 
     if key == "Enter":
+        app.action_todo_detail()
+    elif key in SPACE_KEYS:
         app.action_todo_activate()
     elif key == "A":
         app.action_add_todo()

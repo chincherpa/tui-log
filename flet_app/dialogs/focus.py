@@ -19,8 +19,7 @@ from tui_log import db_utils as db
 
 from flet_app import theme
 
-TIMER_PRESETS = [25, 45, 90, 0]
-PRESET_LABELS = ["25 min", "45 min", "90 min", "Offen"]
+
 
 def show_focus(
     page: ft.Page,
@@ -28,20 +27,94 @@ def show_focus(
     started_at: str,
     on_done: Callable[[dict], None],
     *,
+    db_path=None,
     app=None,
 ) -> None:
     state = {
-        "preset_idx": 1,
         "notes": [],
         "stopped": False,
+        "paused": False,
+        "accumulated_s": 0,
+        "period_start": None,  # set after fromisoformat
     }
     started_dt = datetime.fromisoformat(started_at)
+    state["period_start"] = started_dt
 
     title = ft.Text(f"Focus  ·  {todo.title[:40]}", color=theme.TEXT_PRIMARY, weight="bold", size=14)
     timer_label = ft.Text("", color=theme.STATUS_COLORS["active"], size=24, weight="bold")
-    preset_label = ft.Text(PRESET_LABELS[state["preset_idx"]], color=theme.TEXT_SECONDARY, size=12)
+    pause_btn = ft.OutlinedButton("⏸  Pause", on_click=lambda _e: _toggle_pause())
+
+    # ── Sub-Todos ─────────────────────────────────────────────────
+    subtodos_col = ft.Column([], spacing=3)
+
+    def _build_subtodo_row(st: db.SubTodo) -> ft.Control:
+        check_icon = "✓" if st.done else "○"
+        check_color = theme.STATUS_COLORS["done"] if st.done else theme.TEXT_DIM
+        title_color = theme.TEXT_DIM if st.done else theme.TEXT_PRIMARY
+        title_style = ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH) if st.done else None
+
+        def _on_toggle(_e, subtodo_id=st.id) -> None:
+            if db_path is not None:
+                db.subtodo_toggle(db_path, subtodo_id)
+                _reload_subtodos()
+
+        return ft.GestureDetector(
+            on_tap=_on_toggle,
+            content=ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Text(check_icon, color=check_color, size=13, width=18),
+                        ft.Text(
+                            st.title,
+                            color=title_color,
+                            size=13,
+                            style=title_style,
+                            expand=True,
+                            max_lines=2,
+                            overflow="ellipsis",
+                        ),
+                    ],
+                    spacing=6,
+                    vertical_alignment="center",
+                ),
+                padding=ft.Padding(left=4, right=4, top=3, bottom=3),
+                border_radius=4,
+            ),
+            mouse_cursor=ft.MouseCursor.CLICK,
+        )
+
+    def _reload_subtodos() -> None:
+        if db_path is None:
+            return
+        subtodos = db.subtodo_list_for_todo(db_path, todo.id)
+        subtodos_col.controls.clear()
+        for st in subtodos:
+            subtodos_col.controls.append(_build_subtodo_row(st))
+        page.update()
+
+    _reload_subtodos()
+
+    subtodo_input = ft.TextField(
+        hint_text="Sub-Todo hinzufügen...",
+        border_color=theme.BORDER,
+        focused_border_color=theme.ACCENT_BLUE,
+        text_size=12,
+        height=36,
+        content_padding=ft.Padding(left=8, right=8, top=4, bottom=4),
+        on_submit=lambda _e: _add_subtodo(),
+    )
+
+    def _add_subtodo() -> None:
+        title = (subtodo_input.value or "").strip()
+        if not title or db_path is None:
+            return
+        db.subtodo_add(db_path, todo.id, title)
+        subtodo_input.value = ""
+        _reload_subtodos()
+
+    # ── Notes ──────────────────────────────────────────────────────
     note_input = ft.TextField(
-        hint_text="Notiz hinzufügen (Enter = speichern)",
+        hint_text="Notiz hinzufügen...",
         border_color=theme.BORDER,
         focused_border_color=theme.ACCENT_BLUE,
         text_size=13,
@@ -58,13 +131,10 @@ def show_focus(
         note_input.value = ""
         page.update()
 
-    def _cycle_preset(_e=None) -> None:
-        state["preset_idx"] = (state["preset_idx"] + 1) % len(TIMER_PRESETS)
-        preset_label.value = PRESET_LABELS[state["preset_idx"]]
-        page.update()
-
     def _elapsed_s() -> int:
-        return int((datetime.now() - started_dt).total_seconds())
+        if state["paused"]:
+            return state["accumulated_s"]
+        return state["accumulated_s"] + int((datetime.now() - state["period_start"]).total_seconds())
 
     def _fmt(elapsed: int) -> str:
         h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
@@ -72,16 +142,34 @@ def show_focus(
             return f"{h:02d}:{m:02d}:{s:02d}"
         return f"{m:02d}:{s:02d}"
 
+    def _toggle_pause() -> None:
+        if state["paused"]:
+            state["period_start"] = datetime.now()
+            state["paused"] = False
+            timer_label.color = theme.STATUS_COLORS["active"]
+            pause_btn.text = "⏸  Pause"
+        else:
+            state["accumulated_s"] = _elapsed_s()
+            state["paused"] = True
+            timer_label.color = theme.ACCENT_GOLD
+            pause_btn.text = "▶  Weiter"
+        try:
+            timer_label.update()
+            pause_btn.update()
+        except Exception:
+            pass
+
     async def _tick() -> None:
         # Brief delay so the dialog is mounted before first update
         await asyncio.sleep(0.2)
         while not state["stopped"]:
-            elapsed = _elapsed_s()
-            timer_label.value = _fmt(elapsed)
-            try:
-                timer_label.update()
-            except Exception:
-                break
+            if not state["paused"]:
+                elapsed = _elapsed_s()
+                timer_label.value = _fmt(elapsed)
+                try:
+                    timer_label.update()
+                except Exception:
+                    break
             await asyncio.sleep(1)
 
     def _close_with(payload: dict) -> None:
@@ -108,10 +196,15 @@ def show_focus(
         title=title,
         content=ft.Column(
             [
-                ft.Row([timer_label, preset_label,
-                        ft.IconButton(ft.Icons.TIMER, tooltip="Preset wechseln", on_click=_cycle_preset)],
+                ft.Row([timer_label, pause_btn],
                        alignment="center", vertical_alignment="center", spacing=12),
                 ft.Divider(color=theme.BORDER),
+                *([
+                    ft.Text("Sub-Todos", color=theme.TEXT_DIM, size=10, weight="bold"),
+                    subtodos_col,
+                    subtodo_input,
+                    ft.Divider(color=theme.BORDER),
+                ] if db_path is not None else []),
                 note_input,
                 notes_view,
             ],

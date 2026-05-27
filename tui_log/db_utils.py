@@ -96,6 +96,14 @@ class TodoNote:
     content: str
 
 @dataclass
+class SubTodo:
+    id: int
+    todo_id: int
+    title: str
+    done: bool
+    created_at: str
+
+@dataclass
 class Project:
     id: int
     name: str
@@ -122,6 +130,11 @@ def _row_to_session(row) -> FocusSession:
 
 def _row_to_note(row) -> TodoNote:
     return TodoNote(**dict(row))
+
+def _row_to_subtodo(row) -> SubTodo:
+    d = dict(row)
+    d["done"] = bool(d["done"])
+    return SubTodo(**d)
 
 def _row_to_project(row) -> Project:
     return Project(**dict(row))
@@ -686,6 +699,47 @@ def note_list_for_session(db_path: Path, session_id: int) -> list[TodoNote]:
 def note_delete(db_path: Path, note_id: int) -> bool:
     with get_connection(db_path) as conn:
         cur = conn.execute("DELETE FROM todo_notes WHERE id = ?", (note_id,))
+    return cur.rowcount > 0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SUB-TODOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def subtodo_add(db_path: Path, todo_id: int, title: str) -> SubTodo:
+    with get_connection(db_path) as conn:
+        cur = conn.execute(
+            "INSERT INTO sub_todos (todo_id, title) VALUES (?, ?)",
+            (todo_id, title.strip()),
+        )
+        subtodo_id = cur.lastrowid
+    return subtodo_get(db_path, subtodo_id)  # type: ignore[return-value]
+
+def subtodo_get(db_path: Path, subtodo_id: int) -> SubTodo | None:
+    with get_connection(db_path, readonly=True) as conn:
+        row = conn.execute(
+            "SELECT * FROM sub_todos WHERE id = ?", (subtodo_id,)
+        ).fetchone()
+    return _row_to_subtodo(row) if row else None
+
+def subtodo_list_for_todo(db_path: Path, todo_id: int) -> list[SubTodo]:
+    with get_connection(db_path, readonly=True) as conn:
+        rows = conn.execute(
+            "SELECT * FROM sub_todos WHERE todo_id = ? ORDER BY created_at",
+            (todo_id,),
+        ).fetchall()
+    return [_row_to_subtodo(r) for r in rows]
+
+def subtodo_toggle(db_path: Path, subtodo_id: int) -> SubTodo | None:
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE sub_todos SET done = NOT done WHERE id = ?",
+            (subtodo_id,),
+        )
+    return subtodo_get(db_path, subtodo_id)
+
+def subtodo_delete(db_path: Path, subtodo_id: int) -> bool:
+    with get_connection(db_path) as conn:
+        cur = conn.execute("DELETE FROM sub_todos WHERE id = ?", (subtodo_id,))
     return cur.rowcount > 0
 
 # ─────────────────────────────────────────────────────────────────────────────

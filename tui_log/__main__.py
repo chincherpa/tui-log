@@ -19,29 +19,6 @@ from . import db_utils as db
 import logging
 import traceback
 
-class _FlushFileHandler(logging.FileHandler):
-    """FileHandler der nach jedem Record sofort flusht + fsynct."""
-    def emit(self, record):
-        super().emit(record)
-        try:
-            self.flush()
-            if self.stream is not None:
-                import os
-                os.fsync(self.stream.fileno())
-        except Exception:
-            pass
-
-def _setup_logging(log_path: Path) -> None:
-    """Schreibt Log nach tui-log.log neben der DB. DEBUG-Level + sofortiger Flush."""
-    handler = _FlushFileHandler(str(log_path), mode="a", encoding="utf-8")
-    handler.setFormatter(logging.Formatter("%(asctime)s  %(levelname)s  %(message)s"))
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-    # Alte Handler entfernen (falls basicConfig schon lief)
-    for h in list(root.handlers):
-        root.removeHandler(h)
-    root.addHandler(handler)
-
 def _parse_args():
     parser = argparse.ArgumentParser(
         prog="python work_app.py",
@@ -73,9 +50,6 @@ def main() -> None:
         print(f"[Fehler] {e}")
         raise SystemExit(1)
 
-    log_path = cfg.db_path.parent / "tui-log.log"
-    _setup_logging(log_path)
-
     db.project_upsert_from_config(cfg.db_path, cfg.projects)
 
     # 3. App starten (Flet desktop)
@@ -84,7 +58,6 @@ def main() -> None:
         run(cfg)
     except Exception as e:
         logging.error(f"Unbehandelter Fehler:\n{traceback.format_exc()}")
-        print(f"\n[Fehler] {e}\nDetails in: {log_path}")
 
     # 4. WAL-Checkpoint: -shm und -wal Dateien aufräumen
     _wal_cleanup(cfg.db_path)

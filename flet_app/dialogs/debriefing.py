@@ -68,11 +68,25 @@ def show_debriefing(
 
     _build_outcome_row()
 
+    log_text: list[str] = [""]
+
+    save_btn = ft.FilledButton("Speichern", on_click=lambda _e: _save(), disabled=True)
+
+    def _on_text_change(e) -> None:
+        log_text[0] = e.control.value or ""
+        save_btn.disabled = not log_text[0].strip()
+        try:
+            save_btn.update()
+        except Exception:
+            pass
+
     log_input = ft.TextField(
         label="Eintrag fürs Tages-Log",
         hint_text="Kurz beschreiben was passiert ist…",
         autofocus=True, multiline=True, min_lines=2, max_lines=4,
         border_color=theme.BORDER, focused_border_color=theme.ACCENT_BLUE,
+        on_change=_on_text_change,
+        on_submit=lambda _e: _save() if log_text[0].strip() else None,
     )
 
     def _close(payload: dict | None) -> None:
@@ -80,9 +94,12 @@ def show_debriefing(
         on_done(payload)
 
     def _save(_e=None) -> None:
+        entry = log_text[0].strip() or (log_input.value or "").strip()
+        if not entry:
+            return
         _close({
             "outcome": selected["value"],
-            "log_entry": (log_input.value or "").strip(),
+            "log_entry": entry,
         })
 
     dlg = ft.AlertDialog(
@@ -95,7 +112,7 @@ def show_debriefing(
         ),
         actions=[
             ft.TextButton("Ohne Eintrag", on_click=lambda _e: _close(None)),
-            ft.FilledButton("Speichern", on_click=_save),
+            save_btn,
         ],
         actions_alignment="end",
     )

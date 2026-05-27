@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Generator
 
 # Aktuelle Schema-Version – erhöhen wenn neue Migration hinzukommt
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 # ── SQL ──────────────────────────────────────────────────────────────────────
 
@@ -173,6 +173,31 @@ _MIGRATIONS: dict[int, str] = {
     CREATE INDEX IF NOT EXISTS idx_todo_status ON todos(status);
     CREATE INDEX IF NOT EXISTS idx_todo_mode   ON todos(mode);
     PRAGMA foreign_keys=ON;
+    """,
+
+    5: """
+    -- Sub-Todos: einfache Aufgaben-Checklisten unterhalb eines Todos
+    CREATE TABLE IF NOT EXISTS sub_todos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        todo_id     INTEGER NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
+        title       TEXT    NOT NULL,
+        done        INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_subtodo_todo ON sub_todos(todo_id);
+    """,
+
+    6: """
+    CREATE TABLE IF NOT EXISTS sub_todos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        todo_id     INTEGER NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
+        title       TEXT    NOT NULL,
+        done        INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_subtodo_todo ON sub_todos(todo_id);
     """,
 }
 
